@@ -1,0 +1,235 @@
+
+@keyframes tor-page-enter{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes tor-section-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tor-row-enter{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:translateX(0)}}
+@keyframes tor-feedback-enter{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tor-tap-ring{from{transform:scale(.2);opacity:.32}to{transform:scale(1);opacity:0}}
+#tor-design main>h1,#tor-design main>.eyebrow,#tor-design main>p{animation:tor-page-enter 220ms ease-out both}
+#tor-design main>.panel,#tor-design main>.hero,#tor-design .stat{animation:tor-section-enter 340ms cubic-bezier(.22,.61,.36,1) both}
+#tor-design main>.panel:nth-of-type(2),#tor-design .stat:nth-child(2){animation-delay:45ms}
+#tor-design main>.panel:nth-of-type(3),#tor-design .stat:nth-child(3){animation-delay:90ms}
+#tor-design main>.panel:nth-of-type(n+4){animation-delay:135ms}
+#tor-design .grid>label{animation:tor-section-enter 240ms ease-out both}
+#tor-design .grid>label:nth-child(even){animation-delay:35ms}
+#tor-design tbody tr{animation:tor-row-enter 260ms ease-out both;transition:background-color 160ms}
+#tor-design tbody tr:nth-child(2){animation-delay:35ms}
+#tor-design tbody tr:nth-child(3){animation-delay:70ms}
+#tor-design tbody tr:nth-child(n+4){animation-delay:105ms}
+#tor-design .steps>span{animation:tor-section-enter 240ms ease-out both;transition:box-shadow 160ms}
+#tor-design .steps>span:nth-child(2){animation-delay:45ms}
+#tor-design .steps>span:nth-child(3){animation-delay:90ms}
+#tor-design .action,#tor-design .secondary,#tor-design .menu-toggle{position:relative;overflow:hidden;transition:transform 160ms,box-shadow 160ms,filter 160ms,background-color 160ms}
+#tor-design button:active{transform:scale(.98)}
+#tor-design button:focus-visible{outline:2px solid #379bc4;outline-offset:3px}
+#tor-design .panel,#tor-design .stat,#tor-design .preview-image{transition:box-shadow 200ms,border-color 200ms}
+#tor-design input:not([type=range]),#tor-design textarea,#tor-design select{transition:border-color 160ms,box-shadow 160ms,background-color 160ms}
+#tor-design input:not([type=range]):focus,#tor-design textarea:focus,#tor-design select:focus{box-shadow:0 0 0 4px #3198cc18}
+#tor-design input[type=checkbox]{accent-color:#188d89;transition:transform 140ms}
+#tor-design input[type=checkbox]:checked{transform:scale(1.1)}
+#tor-design .ui-icon,#tor-design .menu-symbol{transition:transform 180ms,background-color 180ms}
+#tor-design .notice{animation:tor-feedback-enter 230ms ease-out both}
+#tor-design .tap-ring{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:currentColor;pointer-events:none;animation:tor-tap-ring 420ms ease-out forwards}
+@media(hover:hover) and (pointer:fine){
+#tor-design .action:hover,#tor-design .secondary:hover{transform:translateY(-2px);box-shadow:0 6px 14px #165b8a22}
+#tor-design .panel:hover,#tor-design .stat:hover{box-shadow:0 7px 22px #163b6018;border-color:light-dark(#b9d7eb,#4d6f8c)}
+#tor-design tbody tr:hover{background:light-dark(#eaf5ff,#243c54)}
+#tor-design nav button[data-go]:hover .menu-symbol{transform:translateX(2px)}
+#tor-design .action:hover .ui-icon,#tor-design .secondary:hover .ui-icon{transform:translateX(2px)}
+#tor-design .preview-image:hover{box-shadow:0 5px 16px #186c9520}
+}
+@media(prefers-reduced-motion:reduce){
+#tor-design *,#tor-design *::before,#tor-design *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+#tor-design button:active,#tor-design button:hover,#tor-design input[type=checkbox]:checked,#tor-design .ui-icon,#tor-design .menu-symbol{transform:none!important}
+#tor-design .tap-ring{display:none}
+}
+
+
+#tor-design .layout{transition:grid-template-columns 260ms cubic-bezier(.22,.61,.36,1)}
+#tor-design.menu-resizing .layout{transition:none}
+#tor-design .sidebar-shell{min-width:0}
+#tor-design .group-arrow{transition:transform 220ms cubic-bezier(.22,.61,.36,1)!important}
+#tor-design .sidebar-shell nav button{transition:background-color 160ms,color 160ms,box-shadow 160ms}
+#tor-design .sidebar-shell .group-items{box-sizing:border-box}
+@media(prefers-reduced-motion:reduce){
+#tor-design .layout,#tor-design .group-arrow,#tor-design .sidebar-shell nav button{transition:none!important}
+}
+
+
+#tor-design .menu-group{margin:6px 0 12px;min-width:0}
+#tor-design .sidebar-shell nav .group-toggle{width:100%;display:flex;gap:8px;align-items:center;min-height:44px;padding:9px 10px;background:light-dark(#eaf2fa,#21354b);color:light-dark(#315f87,#b4d4f0);border:0;border-radius:8px;font-size:12px;font-weight:700;text-align:left}
+#tor-design .sidebar-shell nav .group-toggle:hover{background:light-dark(#deebf8,#2a425d)}
+#tor-design .group-name{flex:1;min-width:0;overflow-wrap:anywhere}
+#tor-design .group-count{min-width:21px;padding:0 5px;text-align:center;border-radius:5px;background:light-dark(#fff,#172536);color:light-dark(#54758f,#b3cadd);font-weight:400}
+#tor-design .group-arrow{display:inline-block;flex-shrink:0;font-size:16px;transform:rotate(0deg);transition:transform .15s}
+#tor-design .group-toggle[aria-expanded="true"] .group-arrow{transform:rotate(90deg)}
+#tor-design .group-toggle.has-current .group-name:after{content:' •';color:light-dark(#168a7a,#85d9c7)}
+#tor-design .group-items{padding:4px 0 0 6px}
+#tor-design .group-items[hidden]{display:none!important}
+#tor-design.menu-compact .sidebar-shell nav .group-toggle{display:none}
+#tor-design.menu-compact .menu-group{margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+#tor-design.menu-compact .group-items{padding:0}
+@media(prefers-reduced-motion:reduce){#tor-design .group-arrow{transition:none}}
+
+
+#tor-design .ui-icon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle}
+#tor-design .ui-icon svg,#tor-design .ui-icon i{width:18px;height:18px}
+#tor-design .menu-symbol{width:30px;min-width:30px;height:30px;border-radius:8px;background:light-dark(#e6f0fb,#243c55);color:light-dark(#286d9f,#a9d6fa)}
+#tor-design nav button.active .menu-symbol{background:#ffffff24;color:#fff}
+#tor-design nav button{gap:10px}
+#tor-design h1 .ui-icon{width:38px;height:38px;margin-right:10px;border-radius:10px;background:light-dark(#dfeefb,#254564);color:light-dark(#2473ad,#a6d5fa)}
+#tor-design h1 .ui-icon svg{width:22px;height:22px}
+#tor-design h2 .ui-icon{margin-right:9px}
+#tor-design .action .ui-icon,#tor-design .secondary .ui-icon{margin-right:8px}
+#tor-design .steps .ui-icon{margin-right:7px}
+#tor-design .stat .stat-symbol{float:right;width:38px;height:38px;border-radius:10px;background:light-dark(#ffffffaa,#ffffff12);color:inherit}
+#tor-design .menu-toggle .ui-icon{margin-right:0}
+#tor-design.menu-compact .sidebar-shell nav button{padding:7px 3px}
+#tor-design .menu-symbol i{width:20px;height:20px;display:inline-block}
+
+
+#tor-design .layout{grid-template-columns:var(--tor-menu-width,250px) minmax(0,1fr)!important}
+#tor-design .sidebar-shell{position:relative;min-width:0;background:var(--p);border-right:1px solid var(--line)}
+#tor-design .sidebar-shell nav{border-right:0}
+#tor-design .sidebar-shell nav button{display:flex;align-items:center;gap:12px;min-height:44px}
+#tor-design .menu-symbol{display:inline-flex;width:22px;min-width:22px;justify-content:center;align-items:center;font-size:12px}
+#tor-design .menu-symbol svg{width:20px;height:20px}
+#tor-design .menu-toggle{display:flex;align-items:center;gap:8px;min-height:44px;background:#ffffff1f;color:#fff;border:1px solid #ffffff55;border-radius:8px;padding:8px 12px}
+#tor-design .sidebar-width{padding:12px 20px;border-bottom:1px solid var(--line)}
+#tor-design .sidebar-width input{padding:0;min-height:28px;accent-color:#17828e}
+#tor-design .sidebar-grip{position:absolute;right:-5px;top:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;z-index:2;background:transparent}
+#tor-design .sidebar-grip:hover,#tor-design .sidebar-grip.dragging{background:#3d9bc940}
+#tor-design.menu-compact .layout{grid-template-columns:68px minmax(0,1fr)!important}
+#tor-design.menu-compact .sidebar-width,#tor-design.menu-compact nav small,#tor-design.menu-compact .menu-label,#tor-design.menu-compact .sidebar-grip{display:none}
+#tor-design.menu-compact .sidebar-shell nav{padding:12px 8px}
+#tor-design.menu-compact .sidebar-shell nav button{justify-content:center;padding:10px 8px}
+#tor-design .menu-label{white-space:normal;overflow-wrap:anywhere;text-align:left}
+#tor-design input{font-size:16px}
+@media(max-width:700px){
+#tor-design .layout,#tor-design.menu-compact .layout{grid-template-columns:minmax(0,1fr)!important}
+#tor-design .sidebar-shell nav{display:block}
+#tor-design .sidebar-shell nav button{width:100%;font-size:14px}
+#tor-design .sidebar-shell nav small{display:block}
+#tor-design .sidebar-width,#tor-design .sidebar-grip{display:none}
+#tor-design.menu-compact .sidebar-shell{display:none}
+}
+
+
+#tor-design{font:14px/1.65 'Tahoma',sans-serif;color:light-dark(#203047,#e1e8f2);--p:light-dark(#fff,#182331);--bg:light-dark(#f3f6fa,#101925);--line:light-dark(#e1e8ef,#344355);--sub:light-dark(#65758b,#a5b4c8);background:var(--bg);border-radius:18px;overflow:hidden}#tor-design *{box-sizing:border-box}#tor-design button,#tor-design input,#tor-design select,#tor-design textarea{font:inherit}#tor-design button{cursor:pointer}#tor-design .top{padding:22px 110px 22px 24px;background:#122c49;color:#fff;display:flex;gap:18px;align-items:center;flex-wrap:wrap}#tor-design .brand{font-size:23px;font-weight:700;letter-spacing:1px}#tor-design .tag{font-size:12px;background:#284862;padding:5px 10px;border-radius:7px}#tor-design .layout{display:grid;grid-template-columns:215px minmax(0,1fr)}#tor-design nav{padding:22px 12px;background:var(--p);border-right:1px solid var(--line)}#tor-design nav small{display:block;color:var(--sub);padding:16px 12px 5px}#tor-design nav button{display:block;text-align:left;width:100%;border:0;background:transparent;color:inherit;padding:9px 12px;border-radius:8px;margin:2px 0}#tor-design nav button.active{background:#17685f;color:#fff}#tor-design main{padding:26px;min-width:0}#tor-design h1{font-size:26px;line-height:1.35;margin:5px 0 8px}#tor-design h2{font-size:17px;margin:0 0 16px}#tor-design h3{font-size:15px;margin:0 0 10px}#tor-design p{margin:6px 0 18px;color:var(--sub)}#tor-design .eyebrow{color:var(--sub);font-size:12px;letter-spacing:1px}#tor-design .panel{background:var(--p);padding:22px;border:1px solid var(--line);border-radius:13px;margin-top:18px}#tor-design .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}#tor-design .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}#tor-design .stat{background:var(--p);padding:18px;border:1px solid var(--line);border-radius:12px}#tor-design .stat strong{font-size:28px;display:block;margin-top:6px}#tor-design label{display:block;color:var(--sub);font-size:13px}#tor-design input,#tor-design select,#tor-design textarea{display:block;width:100%;margin-top:6px;border:1px solid var(--line);border-radius:7px;padding:11px;background:var(--p);color:inherit;min-width:0}#tor-design .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}#tor-design .action{border:0;background:#17685f;color:#fff;padding:11px 18px;border-radius:8px}#tor-design .secondary{border:1px solid var(--line);background:var(--p);color:inherit;padding:10px 15px;border-radius:8px}#tor-design .pill{display:inline-block;background:light-dark(#e2f2ed,#254b45);color:light-dark(#17685f,#b1e5d8);border-radius:6px;padding:3px 9px;font-size:12px}#tor-design .tablewrap{overflow-x:auto}#tor-design table{border-collapse:collapse;width:100%;text-align:left}#tor-design th{color:var(--sub);font-weight:400}#tor-design th,#tor-design td{padding:13px 9px;border-bottom:1px solid var(--line);vertical-align:top}#tor-design .steps{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}#tor-design .steps span{padding:8px 12px;border-radius:6px;background:var(--p);border:1px solid var(--line)}#tor-design .foot{padding:18px 24px;border-top:1px solid var(--line);color:var(--sub);font-size:12px}#tor-design .hero{padding:40px 25px;background:#122c49;color:#fff;border-radius:15px;margin-top:20px}#tor-design .hero p{color:#d3dfeb}#tor-design .hero h1{font-size:36px}#tor-design .money{font-size:30px;font-weight:700;color:light-dark(#17685f,#9bdacb)}#tor-design .preview-image{background:light-dark(#e9eff5,#253548);border-radius:10px;padding:35px;text-align:center;color:var(--sub)}#tor-design input[type=checkbox]{display:inline;width:auto}#tor-design .notice{border-left:3px solid #d49a36;padding:10px 14px;background:var(--p);margin-top:18px;color:var(--sub)}@media(max-width:700px){#tor-design .layout{grid-template-columns:1fr}#tor-design nav{display:flex;flex-wrap:wrap;gap:4px;border-right:0;border-bottom:1px solid var(--line);padding:12px}#tor-design nav small{display:none}#tor-design nav button{width:auto;padding:8px;font-size:12px}#tor-design main{padding:18px}#tor-design .grid,#tor-design .stats{grid-template-columns:1fr}#tor-design .top{padding-left:18px}#tor-design h1{font-size:23px}}
+
+
+#tor-design{--bg:light-dark(#eef5fb,#111d2d);--line:light-dark(#dce7f2,#34475e)}
+#tor-design .top{background:linear-gradient(115deg,#12365b 0%,#155e91 62%,#147e83 100%);border-bottom:4px solid #62cabb}
+#tor-design .tag{background:#ffffff20;border:1px solid #ffffff35;color:#fff}
+#tor-design nav{background:light-dark(#f8fbff,#152236)}
+#tor-design nav small{color:light-dark(#356b94,#91c1e8);font-weight:700;letter-spacing:.3px}
+#tor-design nav button:hover{background:light-dark(#e6f0fb,#243c59)}
+#tor-design nav button.active{background:linear-gradient(100deg,#176bc0,#148a8a);color:#fff;box-shadow:0 4px 12px #125e9d26}
+#tor-design h1{color:light-dark(#154b78,#b5dbff)}
+#tor-design .panel{box-shadow:0 4px 18px #163b6010;border-color:var(--line)}
+#tor-design .panel h2{padding:10px 13px;background:light-dark(#eaf3fd,#203c58);color:light-dark(#205a89,#badcff);border-left:4px solid #4b96d9;border-radius:6px}
+#tor-design .steps + .panel h2{background:light-dark(#eaf3fd,#203c58)}
+#tor-design .steps ~ .panel:nth-of-type(2) h2{background:light-dark(#e7f6f2,#173d3a);color:light-dark(#186e63,#a0e5d5);border-left-color:#2da18d}
+#tor-design .steps ~ .panel:nth-of-type(3) h2{background:light-dark(#fff3e4,#493824);color:light-dark(#945915,#f5d09b);border-left-color:#e8a34d}
+#tor-design .action{background:linear-gradient(110deg,#1777ac,#14877c);box-shadow:0 3px 8px #176b8720}
+#tor-design .action:hover{filter:brightness(1.08)}
+#tor-design .secondary{background:light-dark(#f0f7ff,#20384e);border-color:light-dark(#cbdff0,#365471);color:light-dark(#245e8b,#b6dbf8)}
+#tor-design .stat:nth-child(1){background:light-dark(#e9f3ff,#1c3552);border-color:light-dark(#cbe2fb,#355475)}
+#tor-design .stat:nth-child(1) strong{color:light-dark(#216bb0,#a7d5ff)}
+#tor-design .stat:nth-child(2){background:light-dark(#e6f7f0,#183d34);border-color:light-dark(#c3e9da,#315c4e)}
+#tor-design .stat:nth-child(2) strong{color:light-dark(#16735e,#9fe0cb)}
+#tor-design .stat:nth-child(3){background:light-dark(#fff2df,#453523);border-color:light-dark(#f5dcb4,#685235)}
+#tor-design .stat:nth-child(3) strong{color:light-dark(#9a5b13,#f2cb91)}
+#tor-design th{background:light-dark(#eef4fc,#21354d);color:light-dark(#385f84,#b6cce5)}
+#tor-design tbody tr:nth-child(even){background:light-dark(#f8fbfe,#1b293a)}
+#tor-design input,#tor-design select,#tor-design textarea{background:light-dark(#fbfdff,#172637);border-color:light-dark(#ceddeb,#3d526b)}
+#tor-design input:focus,#tor-design select:focus,#tor-design textarea:focus{outline:2px solid #3999cb;outline-offset:2px}
+#tor-design .steps span:nth-child(1){background:light-dark(#e6f1ff,#203c58);color:light-dark(#215f99,#b7daff);border-color:light-dark(#c9def7,#3a5775)}
+#tor-design .steps span:nth-child(2){background:light-dark(#e5f6ef,#193f34);color:light-dark(#216f59,#aae4cc);border-color:light-dark(#c6e8d8,#35594b)}
+#tor-design .steps span:nth-child(3){background:light-dark(#fff1df,#453523);color:light-dark(#915b1b,#f4d29f);border-color:light-dark(#f3dbb7,#675232)}
+#tor-design .notice{background:light-dark(#fff7e9,#423724);color:light-dark(#80591e,#e5cb9f);border-left-color:#eba83e;border-radius:6px}
+#tor-design .preview-image{background:linear-gradient(120deg,light-dark(#e7f1ff,#233c5c),light-dark(#e6f5f1,#23453e));color:light-dark(#3f6d85,#b9d9e6)}
+#tor-design .hero{background:linear-gradient(115deg,#173e70,#17658b 65%,#158e85)}
+#tor-design .hero h1{color:#fff}
+#tor-design .hero .action{background:#e4f8ed;color:#125e50;box-shadow:none}
+#tor-design .foot{background:light-dark(#e8f0f8,#142438)}
+
+@font-face{font-family:Sarabun;src:url('./Sarabun.ttf')}html{color-scheme:light}body{margin:0;background:#f1f6fb;font-family:Sarabun, sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer}*{box-sizing:border-box}
+#tor-design{max-width:none!important;font-family:Sarabun,sans-serif!important;border:0!important;border-radius:0!important}#tor-design .layout{min-height:calc(100vh - 130px)}#tor-design main{padding:30px 36px!important;min-width:0}#tor-design .top{position:sticky;top:0;z-index:20;padding:16px 24px;gap:18px}#tor-design .sidebar-shell{position:sticky;top:77px;align-self:start;height:calc(100vh - 77px);overflow:auto}#tor-design .sidebar-shell nav{padding:10px 12px}#tor-design .public-layout{display:block!important}#tor-design .public-layout main{max-width:1150px;margin:auto}#tor-design .hero{padding:55px!important;border-radius:22px}#tor-design .hero h1{font-size:44px!important;line-height:1.5}#tor-design .public-layout .panel{margin-top:24px}#tor-design .group-items{display:grid;grid-template-rows:1fr;transition:grid-template-rows .24s,opacity .24s}#tor-design .group-items.closed{grid-template-rows:0fr;opacity:0}#tor-design .group-items>div{overflow:hidden}#tor-design .tour{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 22px;padding:12px 16px;background:#e4eef9;border-radius:12px}#tor-design select{max-width:100%;padding:9px;border:1px solid #cad8e7;border-radius:8px;background:white}#tor-design .tour-actions{display:flex;gap:6px}#tor-design .preview-image{min-height:120px}#tor-design .top .tag{margin-left:auto}.modal-backdrop{position:fixed;inset:0;z-index:50;background:#0d234b88;display:grid;place-items:center;padding:20px}.modal{background:white;border-radius:20px;width:min(620px,100%);max-height:85vh;overflow:auto;padding:28px;box-shadow:0 30px 100px #10274455}.modal h2{margin-top:0}.modal dl{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modal dt{color:#59718d}.modal dd{margin:0;overflow-wrap:anywhere}.toast{background:#dff5ec;color:#116452;padding:14px;border-radius:10px;margin-bottom:16px}.page-content{animation:tor-section-enter .3s both}#tor-design input:focus,#tor-design textarea:focus{outline:2px solid #3186cc;outline-offset:2px}#tor-design .secondary:disabled{opacity:.4;cursor:default}#tor-design .sidebar-grip{position:fixed;left:calc(var(--tor-menu-width) - 5px);top:77px;bottom:0}#tor-design.menu-compact .sidebar-grip{display:none}#tor-design .brand{cursor:pointer}#tor-design main>h1{font-size:28px}#tor-design .panel{border-radius:14px}#tor-design .top .secondary{background:#ffffff15;color:white;border-color:#ffffff40}
+@media(max-width:700px){#tor-design main{padding:18px!important}#tor-design .top{padding:12px;gap:9px}#tor-design .top>span:nth-of-type(2){display:none}#tor-design .hero{padding:28px!important}#tor-design .hero h1{font-size:30px!important}#tor-design .tour{flex-wrap:wrap}#tor-design .sidebar-shell{position:fixed;z-index:25;width:min(85vw,300px);box-shadow:15px 0 30px #18344c33}#tor-design.menu-compact .sidebar-shell{display:none}#tor-design .layout{grid-template-columns:1fr!important}#tor-design .sidebar-grip{display:none}}
+
+#tor-design .staff-entry{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0}
+@media(max-width:480px){#tor-design .top:has(.staff-entry) .tag{display:none}#tor-design .staff-entry{margin-left:auto;padding:9px}#tor-design .top:has(.staff-entry) .brand{font-size:19px}}
+
+#tor-design .announcement-modal{border:0;border-radius:24px;padding:36px;width:min(480px,calc(100% - 32px));max-height:90vh;color:#18344e;box-shadow:0 30px 90px #09223d55;animation:tor-section-enter .25s ease-out}#tor-design .announcement-modal::backdrop{background:#0b254a99;backdrop-filter:blur(4px)}#tor-design .announcement-modal h2{font-size:25px;margin:18px 0 12px}#tor-design .announcement-modal p{line-height:1.8}#tor-design .announcement-modal .action{width:100%;margin-top:18px}#tor-design .announcement-close{position:absolute;top:12px;right:14px;border:0;border-radius:50%;background:#edf3f8;color:#47647f;font-size:27px;width:38px;height:38px}#tor-design .announcement-icon{background:#e2f4ef;color:#168876;width:58px;height:58px;display:grid;place-items:center;border-radius:18px;margin-bottom:18px}#tor-design .announcement-icon svg{width:30px;height:30px}#tor-design .announcement-badge{background:#fff0d4;color:#9b6511;border-radius:20px;padding:5px 12px;font-size:13px}#tor-design .announcement-note{color:#748799;font-size:13px}#tor-design #login-form{max-width:620px}#tor-design #login-form .grid{grid-template-columns:1fr}#tor-design #login-form button{min-width:160px}
+
+#tor-design .announcement-modal{width:min(1000px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:0;border-radius:20px;overflow:auto;background:#fff}#tor-design .announcement-image{display:block;width:100%;height:auto;max-height:calc(100dvh - 32px);object-fit:contain}#tor-design .announcement-close{position:absolute;top:14px;right:14px;z-index:2;display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;margin:0;line-height:1;border:1px solid #c9dce8;border-radius:50%;background:#fffffff2;color:#24415d;box-shadow:0 3px 12px #09243c26}#tor-design .announcement-close svg{display:block;width:22px;height:22px;flex-shrink:0}#tor-design .announcement-close:hover{background:#fff}#tor-design .announcement-close:focus-visible{outline:3px solid #36b5d7;outline-offset:2px}@media(max-width:600px){#tor-design .announcement-modal{width:calc(100vw - 20px);border-radius:14px}#tor-design .announcement-close{top:8px;right:8px}}
+
+#tor-design .login-card{display:grid;grid-template-columns:1fr 1fr;background:#fff;border:1px solid #dce6f0;border-radius:24px;overflow:hidden;box-shadow:0 18px 50px #24496a12;margin-top:24px}#tor-design .login-visual{background:#eaf5fc;display:flex;flex-direction:column;justify-content:center;padding:22px}#tor-design .login-visual img{display:block;width:100%;height:auto;border-radius:18px}#tor-design .login-caption{text-align:center;padding:14px 10px 8px;color:#254e70}#tor-design .login-caption strong{letter-spacing:3px;font-size:20px}#tor-design .login-caption p{margin:6px 0;font-size:15px}#tor-design .login-fields{padding:48px 40px;align-self:center}#tor-design .login-fields h2{font-size:27px;margin:16px 0 12px;color:#143f61}#tor-design .login-kicker{background:#e1f5ef;color:#117b70;font-size:13px;border-radius:30px;padding:6px 12px}#tor-design .login-intro{color:#708295;margin:0 0 30px;line-height:1.7}#tor-design #login-form .grid{gap:20px}#tor-design #login-form input{min-height:48px;border-radius:10px;background:#f8fbfe}#tor-design #login-form button{width:100%;min-height:48px;margin-top:8px}@media(max-width:700px){#tor-design .login-card{grid-template-columns:1fr;margin-top:14px}#tor-design .login-visual{padding:12px;align-items:center}#tor-design .login-visual img{width:190px;max-width:65vw}#tor-design .login-caption{display:none}#tor-design .login-fields{padding:28px 24px}#tor-design .login-fields h2{font-size:24px}#tor-design .login-intro{margin-bottom:24px}}
+
+/* Login fits the available viewport; other screens retain their normal scrolling. */
+#tor-design.login-screen{min-height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100dvh;overflow:visible}
+#tor-design.login-screen .top{position:static;flex-wrap:nowrap;padding:12px 24px}
+#tor-design.login-screen .layout{min-height:0;display:flex!important;align-items:center;justify-content:center}
+#tor-design.login-screen main{width:100%;height:100%;max-height:650px;min-height:0;padding:20px 28px!important;display:flex;flex-direction:column;justify-content:center}
+#tor-design.login-screen main>h1{display:none}
+#tor-design.login-screen .page-content{height:100%;min-height:0}
+#tor-design.login-screen .login-card{height:100%;min-height:0;margin:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+#tor-design.login-screen .login-visual{min-height:0;padding:18px;overflow:hidden}
+#tor-design.login-screen .login-visual img{width:100%;height:0;flex:1;min-height:0;object-fit:contain}
+#tor-design.login-screen .login-caption{flex-shrink:0;padding:8px}
+#tor-design.login-screen .login-fields{padding:24px 32px;min-width:0}
+#tor-design.login-screen .login-fields h2{font-size:25px;margin:12px 0 8px}
+#tor-design.login-screen .login-intro{margin-bottom:20px}
+#tor-design.login-screen #login-form .grid{gap:14px}
+#tor-design.login-screen .foot{padding:8px 20px;text-align:center;font-size:11px}
+@media(max-width:700px){
+#tor-design.login-screen .top{padding:8px 16px}
+#tor-design.login-screen main{padding:12px 16px!important;max-height:760px;max-width:460px}
+#tor-design.login-screen .login-card{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+#tor-design.login-screen .login-visual{padding:4px 12px}
+#tor-design.login-screen .login-visual img{height:100%;width:auto;max-width:100%;max-height:190px;flex:0 1 auto}
+#tor-design.login-screen .login-fields{padding:20px 24px}
+#tor-design.login-screen .login-caption{display:none}
+#tor-design.login-screen .login-fields h2{font-size:23px}
+#tor-design.login-screen .login-intro{margin-bottom:14px}
+#tor-design.login-screen #login-form input{font-size:16px}
+#tor-design.login-screen .foot{padding:6px 12px;font-size:10px}
+}
+@media(max-height:600px){
+#tor-design.login-screen .login-caption,#tor-design.login-screen .login-kicker,#tor-design.login-screen .login-intro{display:none}
+#tor-design.login-screen main{padding:8px 16px!important}
+#tor-design.login-screen .login-fields{padding:12px 24px}
+#tor-design.login-screen .login-fields h2{font-size:21px;margin:0 0 10px}
+#tor-design.login-screen #login-form .grid{gap:8px}
+#tor-design.login-screen #login-form input{min-height:40px;padding:7px 10px;margin-top:3px}
+#tor-design.login-screen #login-form button{min-height:40px;margin-top:0;padding:8px}
+#tor-design.login-screen #login-form>div:last-child{margin-top:12px!important}
+}
+@media(max-height:480px){#tor-design.login-screen .foot{display:none}#tor-design.login-screen .top{padding:5px 16px}#tor-design.login-screen .brand{font-size:19px}}
+@media(max-width:700px) and (max-height:560px){#tor-design.login-screen .login-visual{display:none}#tor-design.login-screen .login-card{grid-template-rows:1fr}}
+@media(max-height:360px){#tor-design.login-screen{height:auto;min-height:100dvh}#tor-design.login-screen main{min-height:290px}}
+
+
+/* Full forms with compact spacing. Keep the fitted login design unchanged. */
+#tor-design:not(.login-screen) main{padding:18px 24px!important}
+#tor-design:not(.login-screen) .panel{padding:15px 18px;margin-top:12px}
+#tor-design:not(.login-screen) .panel h2{margin-bottom:10px;font-size:16px}
+#tor-design:not(.login-screen) .grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
+#tor-design:not(.login-screen) .grid label{font-size:13px;line-height:1.5}
+#tor-design:not(.login-screen) input:not([type=checkbox]):not([type=range]),#tor-design:not(.login-screen) select{height:36px;min-height:36px;margin-top:4px;padding:6px 10px;border-radius:7px;font-size:14px}
+#tor-design:not(.login-screen) textarea{padding:8px 10px;margin-top:4px;min-height:72px;font-size:14px}
+#tor-design:not(.login-screen) .steps{margin-top:10px;gap:8px}
+#tor-design:not(.login-screen) .steps span{padding:5px 10px}
+#tor-design:not(.login-screen) th,#tor-design:not(.login-screen) td{padding:10px 9px}
+#tor-design:not(.login-screen) .form-actions{padding:10px 14px}
+#tor-design:not(.login-screen) .preview-image{min-height:90px;padding:24px}
+#tor-design:not(.login-screen) .stats{margin-top:12px}
+#tor-design:not(.login-screen) .stat{padding:14px}
+@media(min-width:1280px){#tor-design:not(.login-screen) .grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:1000px){#tor-design:not(.login-screen) .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){#tor-design:not(.login-screen) main{padding:14px!important}#tor-design:not(.login-screen) .panel{padding:13px}#tor-design:not(.login-screen) input:not([type=checkbox]):not([type=range]),#tor-design:not(.login-screen) select{height:42px;min-height:42px;font-size:16px}#tor-design:not(.login-screen) textarea{font-size:16px}}
+@media(max-width:420px){#tor-design:not(.login-screen) .grid{grid-template-columns:1fr}}
+
+#tor-design .report-preview{width:calc(100vw - 32px);max-width:1400px;height:calc(100dvh - 32px);max-height:none;border:0;border-radius:16px;padding:0;background:#e7edf3;color:#18344e}#tor-design .report-preview[open]{display:flex;flex-direction:column}#tor-design .report-preview::backdrop{background:#0b254a99;backdrop-filter:blur(3px)}#tor-design .report-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 20px;background:white;border-bottom:1px solid #d4dfe9;flex-shrink:0}#tor-design .report-toolbar h2{font-size:18px;margin:0 0 4px}#tor-design .report-toolbar p{font-size:12px;margin:0}#tor-design .report-buttons{display:flex;gap:10px;flex-shrink:0}#tor-design .report-preview iframe{border:0;width:100%;flex:1;min-height:0;background:#e7edf3}#tor-design .report-help{margin:0;padding:8px 18px;font-size:12px;background:#fff;flex-shrink:0}#tor-design .report-buttons .action:disabled{opacity:.5;cursor:wait}@media(max-width:700px){#tor-design .report-preview{width:100vw;height:100dvh;border-radius:0}#tor-design .report-toolbar{padding:12px;flex-wrap:wrap;gap:10px}#tor-design .report-toolbar h2{font-size:16px}#tor-design .report-buttons{width:100%;justify-content:flex-end}#tor-design .report-help{font-size:11px}}
+
+#tor-design .attendance-demo{margin:16px 0 12px;padding:10px 14px;border-radius:10px;background:#fff2d9;color:#8a5d12;font-size:13px}#tor-design .attendance-reader{display:flex;align-items:center;gap:22px;background:linear-gradient(110deg,#fff,#eaf7f4);padding:28px!important}#tor-design .attendance-card-icon{color:#137f84;width:88px;height:88px;flex-shrink:0;background:#d8f2ed;border-radius:22px;display:grid;place-items:center}#tor-design .attendance-card-icon svg{width:72px;height:64px}#tor-design .attendance-instructions{flex:1}#tor-design .attendance-instructions h2{font-size:22px!important}#tor-design .reader-status{font-size:13px;color:#7e6b32}#tor-design .reader-status.ready{color:#13775f;font-weight:600}#tor-design .attendance-save{min-width:140px;min-height:48px;font-size:17px}#tor-design .attendance-save:disabled{opacity:.55;cursor:default}#tor-design .attendance-empty{text-align:center;padding:52px 18px;color:#75889b;line-height:2}#tor-design .attendance-success{background:#e3f5ec;color:#167552;border-radius:8px;padding:10px 14px;margin:16px 0}#tor-design .attendance-note{font-size:12px;margin:18px 0 0;color:#7a8c9c}@media(max-width:700px){#tor-design .attendance-reader{flex-wrap:wrap;padding:18px!important;gap:16px}#tor-design .attendance-card-icon{width:64px;height:64px}#tor-design .attendance-card-icon svg{width:54px;height:46px}#tor-design .attendance-instructions h2{font-size:18px!important}#tor-design .attendance-save{width:100%}#tor-design .attendance-page table{min-width:850px}}
