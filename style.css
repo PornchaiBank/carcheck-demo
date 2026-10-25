@@ -236,3 +236,5 @@
 
 /* Real-card bridge */
 #tor-design .bridge-form{display:flex;align-items:end;gap:14px;flex-wrap:wrap}#tor-design .bridge-form label{flex:1;min-width:220px}#tor-design .bridge-form input,#tor-design .bridge-form select{display:block;width:100%;margin-top:6px;min-height:44px}#tor-design .bridge-connect ol{color:#526b80;line-height:1.9;padding-left:24px}#tor-design .bridge-card{display:grid;grid-template-columns:1fr 1fr;gap:18px}#tor-design .bridge-card span,#tor-design .bridge-card strong{display:block}#tor-design .bridge-card span{font-size:13px;color:#687e91}#tor-design .bridge-card strong{font-size:22px;margin-top:8px;overflow-wrap:anywhere}#tor-design .bridge-card small{grid-column:1/-1;color:#63788b}#tor-design .bridge-form button{min-height:44px}@media(max-width:650px){#tor-design .bridge-card{grid-template-columns:1fr}#tor-design .bridge-form button{width:100%}}
+
+.bridge-remember{display:flex;align-items:center;gap:8px;margin:14px 0;font-size:14px}.bridge-remember input{width:18px;height:18px;accent-color:#168888}.bridge-connect>.secondary{margin-top:10px}
