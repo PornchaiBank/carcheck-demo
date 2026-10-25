@@ -1,9 +1,7 @@
 # CARCHECK Demo
 
-React interface demonstration for a vehicle inspection center. Uses fictional data only.
+React vehicle inspection interface demonstration.
 
-Login accepts any non-empty username and password. Attendance is simulated and held in memory only. No production API, LINE messaging, or physical card reader is connected.
+Attendance connects to Card Bridge v2 on the same Windows computer using an ephemeral pairing token. It reads real cards only after explicit connection, displays masked IDs, and keeps rows in memory only. Other screens use fictional data. No database, production API, or LINE sending is connected.
 
-HTML reports are draft layouts pending comparison with original reports.
-
-Publish with GitHub Pages from main / (root).
+Deploy the static root on GitHub Pages. Attendance requires the separately installed Windows bridge; it cannot read a USB smart-card device directly.
