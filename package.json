@@ -1,0 +1,18 @@
+{
+  "name": "carcheck-demo",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "esbuild": "^0.25.0"
+  },
+  "scripts": {
+    "build": "esbuild src/app.jsx --bundle --minify --outfile=app.js",
+    "dev": "esbuild src/app.jsx --bundle --outfile=app.js --watch --servedir=. --serve=127.0.0.1:5173",
+    "test": "node --test src/attendance-state.test.mjs src/bridge-preferences.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

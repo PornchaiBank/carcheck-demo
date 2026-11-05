@@ -1,0 +1,13 @@
+node_modules/
+**/bin/
+**/obj/
+bridge/app/
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+*.log
+*.dpapi
+appsettings.Local.json
+.vs/
