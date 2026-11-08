@@ -790,6 +790,11 @@ html:has(#tor-design.page-announcements),body:has(#tor-design.page-announcements
 #tor-design .entry-actions button:nth-child(4){background:#e8dcf6;border-color:#d5c1eb;color:#68448c}
 #tor-design .entry-actions button:nth-child(5){background:#e4e8e7;border-color:#cdd4d2;color:#53635f}
 #tor-design .entry-actions button:disabled{background:#c8cfcd;border-color:#c8cfcd;color:#6e7a78;cursor:not-allowed;box-shadow:none}
+#tor-design .entry-line-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #e2ebef}
+#tor-design .entry-line-actions>span{margin-right:auto;color:var(--sub);font-size:12px}
+#tor-design .entry-line-actions button{min-height:34px;padding:7px 12px;font-weight:400}
+#tor-design .entry-line-actions button[data-action=entry-link-line]{background:#dff4e8;border-color:#bfe6d0;color:#286b4a}
+#tor-design .entry-line-actions button[data-action=entry-unlink-line]{background:#fff1dc;border-color:#f3d4a8;color:#8a5a18}
 #tor-design.page-entry .form-actions{display:none}
 #tor-design .entry-customer-code{position:relative}
 #tor-design .entry-customer-code input{padding-right:42px!important}
