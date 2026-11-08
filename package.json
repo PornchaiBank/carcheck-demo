@@ -3,9 +3,10 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "esbuild": "^0.25.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "esbuild": "^0.25.0"
+    "react-dom": "^19.0.0"
   },
   "scripts": {
     "build": "esbuild src/app.jsx --bundle --minify --outfile=app.js",
