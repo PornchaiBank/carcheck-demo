@@ -23,6 +23,7 @@ export async function fetchTaxReport(centerId,dueDate,token=''){if(!centerId||!d
 export async function fetchTaxNotifications(centerId,dueDate,token=''){if(!centerId||!dueDate)return [];return get(`/notifications/tax?centerId=${encodeURIComponent(centerId)}&dueDate=${encodeURIComponent(dueDate)}`,token.trim());}
 export async function fetchLineStatus(token=''){return get('/line/status',token.trim());}
 export async function createLineLinkCode(customerId,createdBy,token=''){return send('/line/link-code','POST',{customerId,createdBy},token.trim());}
+export async function unlinkLineCustomer(customerId,token=''){return send(`/line/customers/${encodeURIComponent(customerId)}`,'DELETE',undefined,token.trim());}
 export async function sendLineTax(item,token=''){return send('/line/send-tax','POST',{workId:item.workId,customerId:item.customerId,customerName:item.customerName,licensePlate:item.licensePlate,province:item.province,dueDate:item.dueDate,centerName:item.centerName},token.trim());}
 export async function fetchRyReport(centerId,startDate,endDate,token=''){if(!centerId||!startDate||!endDate)return null;return get(`/reports/ry?centerId=${encodeURIComponent(centerId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,token.trim());}
 export async function fetchCenters(token=''){return get('/centers',token.trim());}

@@ -89,6 +89,7 @@ api.MapPost("/line/link-code",async(LineLinkCodeInput input,LegacySqlRepository 
     var customers=await repository.GetCustomersAsync(input.CustomerId.Trim(),token);if(!customers.Any(customer=>customer.Id==input.CustomerId.Trim()))return Results.NotFound(new{error="ไม่พบรหัสลูกค้า"});
     return Results.Ok(await repository.CreateLineLinkCodeAsync(input.CustomerId.Trim(),input.CreatedBy?.Trim()??string.Empty,token));
 });
+api.MapDelete("/line/customers/{customerId}",async(string customerId,LegacySqlRepository repository,CancellationToken token)=>await repository.UnlinkLineCustomerAsync(customerId.Trim(),token)?Results.NoContent():Results.NotFound(new{error="ไม่พบการผูก LINE ของลูกค้า"}));
 api.MapPost("/line/send-tax",async(LineSendInput input,LegacySqlRepository repository,LineMessagingClient line,CancellationToken token)=>
 {
     if(!line.Configured)return Results.Json(new{error="ยังไม่ได้ตั้งค่า LINE Channel Secret และ Access Token"},statusCode:503);

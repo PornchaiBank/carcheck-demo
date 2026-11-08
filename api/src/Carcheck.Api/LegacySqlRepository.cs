@@ -112,6 +112,8 @@ COMMIT; SELECT @customer;
 
     public async Task DeactivateLineUserAsync(string lineUserId,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_customer SET active=0,updated_at=SYSDATETIME() WHERE line_user_id=@lineUser",connection);command.Parameters.Add("@lineUser",SqlDbType.VarChar,64).Value=lineUserId;await command.ExecuteNonQueryAsync(token);}
 
+    public async Task<bool> UnlinkLineCustomerAsync(string customerId,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_customer SET active=0,updated_at=SYSDATETIME() WHERE customer_id=@customer AND active=1",connection);command.Parameters.Add("@customer",SqlDbType.VarChar,50).Value=customerId;return await command.ExecuteNonQueryAsync(token)>0;}
+
     public async Task<string?> GetLineUserIdAsync(string customerId,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("SELECT line_user_id FROM dbo.db_line_customer WHERE customer_id=@customer AND active=1",connection);command.Parameters.Add("@customer",SqlDbType.VarChar,50).Value=customerId;return Convert.ToString(await command.ExecuteScalarAsync(token)) is {Length:>0} user?user:null;}
 
     public async Task<bool> ReserveLineNotificationAsync(string workId,string customerId,DateTime dueDate,string type,CancellationToken token)
@@ -389,7 +391,7 @@ FROM dbo.db_attendance WHERE (person_key=@person AND work_day=@day) OR bridge_re
             SELECT w.work_id, w.Cus_id, w.Cus_name, w.Cus_card, w.Cus_Tel, w.license_plate, w.province,
                 w.dete_extax, w.alone, w.vat, w.Name_center,
                 CAST(CASE WHEN l.customer_id IS NULL THEN 0 ELSE 1 END AS bit) line_linked,
-                n.sent_at line_sent_at
+                CASE WHEN l.customer_id IS NULL THEN NULL ELSE n.sent_at END line_sent_at
             FROM dbo.Vw_allworking w
             LEFT JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id COLLATE DATABASE_DEFAULT AND l.active=1
             LEFT JOIN dbo.db_line_notification n ON n.work_id=w.work_id COLLATE DATABASE_DEFAULT AND n.notification_type='TAX' AND n.due_date=CAST(w.dete_extax AS date) AND n.status='SENT'
