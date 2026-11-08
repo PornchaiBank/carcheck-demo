@@ -1,6 +1,6 @@
 namespace Carcheck.Api;
 
-public sealed class LineReminderWorker(IServiceScopeFactory scopeFactory,IConfiguration configuration,ILogger<LineReminderWorker> logger):BackgroundService
+public sealed class LineReminderWorker(IServiceScopeFactory scopeFactory,ILogger<LineReminderWorker> logger):BackgroundService
 {
     private DateOnly? lastRun;
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -15,19 +15,18 @@ public sealed class LineReminderWorker(IServiceScopeFactory scopeFactory,IConfig
 
     private async Task RunIfDueAsync(CancellationToken token)
     {
-        if(!configuration.GetValue<bool>("Line:AutomaticEnabled"))return;
+        using var scope=scopeFactory.CreateScope();
+        var repository=scope.ServiceProvider.GetRequiredService<LegacySqlRepository>();
+        var settings=await repository.GetLineSettingsAsync(token);
+        if(!settings.Automatic)return;
         var zone=TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows()?"SE Asia Standard Time":"Asia/Bangkok");
         var now=TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow,zone);
         var day=DateOnly.FromDateTime(now.DateTime);
-        var hour=configuration.GetValue("Line:SendHour",9);
-        if(now.Hour<hour||lastRun==day)return;
+        if(now.Hour<settings.SendHour||(now.Hour==settings.SendHour&&now.Minute<settings.SendMinute)||lastRun==day)return;
         lastRun=day;
-        var leadDays=Math.Clamp(configuration.GetValue("Line:LeadDays",30),0,365);
-        using var scope=scopeFactory.CreateScope();
-        var repository=scope.ServiceProvider.GetRequiredService<LegacySqlRepository>();
         var line=scope.ServiceProvider.GetRequiredService<LineMessagingClient>();
         if(!line.Configured){logger.LogWarning("LINE automatic reminder is enabled but credentials are missing");return;}
-        var targets=await repository.GetAutomaticLineRemindersAsync(DateTime.Today.AddDays(leadDays),token);
+        var targets=await repository.GetAutomaticLineRemindersAsync(now.Date.AddDays(settings.LeadDays),token);
         foreach(var item in targets)
         {
             if(!await repository.ReserveLineNotificationAsync(item.WorkId,item.CustomerId,item.DueDate,"TAX",token))continue;

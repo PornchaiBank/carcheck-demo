@@ -8,6 +8,7 @@ namespace Carcheck.Api;
 public sealed class LegacySqlRepository(IConfiguration configuration)
 {
     private readonly string? _connectionString = configuration.GetConnectionString("DefaultConnection");
+    private readonly IConfiguration _configuration = configuration;
 
     public async Task EnsureAttendanceTableAsync(CancellationToken token)
     {
@@ -81,9 +82,31 @@ BEGIN
  );
  CREATE INDEX IX_db_line_notification_status ON dbo.db_line_notification(status,due_date);
 END;
+IF OBJECT_ID(N'dbo.db_line_settings',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.db_line_settings(
+  id tinyint NOT NULL CONSTRAINT PK_db_line_settings PRIMARY KEY,
+  automatic bit NOT NULL,
+  lead_days int NOT NULL,
+  send_hour tinyint NOT NULL,
+  send_minute tinyint NOT NULL,
+  updated_by varchar(200) NOT NULL,
+  updated_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_settings_updated DEFAULT(SYSDATETIME()),
+  CONSTRAINT CK_db_line_settings_singleton CHECK(id=1),
+  CONSTRAINT CK_db_line_settings_lead_days CHECK(lead_days BETWEEN 0 AND 365),
+  CONSTRAINT CK_db_line_settings_hour CHECK(send_hour BETWEEN 0 AND 23),
+  CONSTRAINT CK_db_line_settings_minute CHECK(send_minute BETWEEN 0 AND 59)
+ );
+END;
+IF NOT EXISTS(SELECT 1 FROM dbo.db_line_settings WHERE id=1)
+ INSERT dbo.db_line_settings(id,automatic,lead_days,send_hour,send_minute,updated_by) VALUES(1,@automatic,@leadDays,@sendHour,0,'SYSTEM');
 """;
-        await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection){CommandTimeout=30};await command.ExecuteNonQueryAsync(token);
+        await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection){CommandTimeout=30};command.Parameters.Add("@automatic",SqlDbType.Bit).Value=_configuration.GetValue<bool>("Line:AutomaticEnabled");command.Parameters.Add("@leadDays",SqlDbType.Int).Value=Math.Clamp(_configuration.GetValue("Line:LeadDays",30),0,365);command.Parameters.Add("@sendHour",SqlDbType.TinyInt).Value=Math.Clamp(_configuration.GetValue("Line:SendHour",9),0,23);await command.ExecuteNonQueryAsync(token);
     }
+
+    public async Task<LineSettings> GetLineSettingsAsync(CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("SELECT automatic,lead_days,send_hour,send_minute FROM dbo.db_line_settings WHERE id=1",connection);await using var reader=await command.ExecuteReaderAsync(CommandBehavior.SingleRow,token);if(!await reader.ReadAsync(token))return new(false,30,9,0);return new(Convert.ToBoolean(reader["automatic"]),Convert.ToInt32(reader["lead_days"]),Convert.ToInt32(reader["send_hour"]),Convert.ToInt32(reader["send_minute"]));}
+
+    public async Task<LineSettings> UpdateLineSettingsAsync(LineSettingsInput input,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_settings SET automatic=@automatic,lead_days=@leadDays,send_hour=@sendHour,send_minute=@sendMinute,updated_by=@updatedBy,updated_at=SYSDATETIME() WHERE id=1",connection);command.Parameters.Add("@automatic",SqlDbType.Bit).Value=input.Automatic;command.Parameters.Add("@leadDays",SqlDbType.Int).Value=input.LeadDays;command.Parameters.Add("@sendHour",SqlDbType.TinyInt).Value=input.SendHour;command.Parameters.Add("@sendMinute",SqlDbType.TinyInt).Value=input.SendMinute;command.Parameters.Add("@updatedBy",SqlDbType.VarChar,200).Value=input.UpdatedBy?.Trim()??string.Empty;await command.ExecuteNonQueryAsync(token);return new(input.Automatic,input.LeadDays,input.SendHour,input.SendMinute);}
 
     public async Task<LineLinkCodeResult> CreateLineLinkCodeAsync(string customerId,string createdBy,CancellationToken token)
     {
