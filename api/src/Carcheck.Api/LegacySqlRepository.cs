@@ -35,6 +35,109 @@ END
         await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection){CommandTimeout=30};await command.ExecuteNonQueryAsync(token);
     }
 
+    public async Task EnsureLineTablesAsync(CancellationToken token)
+    {
+        const string sql="""
+IF OBJECT_ID(N'dbo.db_line_customer',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.db_line_customer(
+  id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_db_line_customer PRIMARY KEY,
+  customer_id varchar(50) NOT NULL,
+  line_user_id varchar(64) NOT NULL,
+  display_name nvarchar(200) NULL,
+  active bit NOT NULL CONSTRAINT DF_db_line_customer_active DEFAULT(1),
+  linked_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_customer_linked DEFAULT(SYSDATETIME()),
+  updated_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_customer_updated DEFAULT(SYSDATETIME()),
+  CONSTRAINT UQ_db_line_customer_customer UNIQUE(customer_id),
+  CONSTRAINT UQ_db_line_customer_user UNIQUE(line_user_id)
+ );
+END;
+IF OBJECT_ID(N'dbo.db_line_link_code',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.db_line_link_code(
+  code char(8) NOT NULL CONSTRAINT PK_db_line_link_code PRIMARY KEY,
+  customer_id varchar(50) NOT NULL,
+  expires_at datetime2(0) NOT NULL,
+  used_at datetime2(0) NULL,
+  created_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_link_code_created DEFAULT(SYSDATETIME()),
+  created_by varchar(200) NOT NULL
+ );
+ CREATE INDEX IX_db_line_link_code_customer ON dbo.db_line_link_code(customer_id,expires_at DESC);
+END;
+IF OBJECT_ID(N'dbo.db_line_notification',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.db_line_notification(
+  id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_db_line_notification PRIMARY KEY,
+  work_id varchar(100) NOT NULL,
+  customer_id varchar(50) NOT NULL,
+  notification_type varchar(20) NOT NULL,
+  due_date date NOT NULL,
+  status varchar(20) NOT NULL,
+  sent_at datetime2(0) NULL,
+  error_message nvarchar(500) NULL,
+  created_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_notification_created DEFAULT(SYSDATETIME()),
+  updated_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_notification_updated DEFAULT(SYSDATETIME()),
+  CONSTRAINT UQ_db_line_notification UNIQUE(work_id,notification_type,due_date)
+ );
+ CREATE INDEX IX_db_line_notification_status ON dbo.db_line_notification(status,due_date);
+END;
+""";
+        await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection){CommandTimeout=30};await command.ExecuteNonQueryAsync(token);
+    }
+
+    public async Task<LineLinkCodeResult> CreateLineLinkCodeAsync(string customerId,string createdBy,CancellationToken token)
+    {
+        const string alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var bytes=RandomNumberGenerator.GetBytes(8);var code=new string(bytes.Select(value=>alphabet[value%alphabet.Length]).ToArray());
+        var expires=DateTimeOffset.Now.AddMinutes(15);
+        const string sql="DELETE dbo.db_line_link_code WHERE customer_id=@customer AND used_at IS NULL; INSERT dbo.db_line_link_code(code,customer_id,expires_at,created_by) VALUES(@code,@customer,@expires,@user);";
+        await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@code",SqlDbType.Char,8).Value=code;command.Parameters.Add("@customer",SqlDbType.VarChar,50).Value=customerId;command.Parameters.Add("@expires",SqlDbType.DateTime2).Value=expires.LocalDateTime;command.Parameters.Add("@user",SqlDbType.VarChar,200).Value=createdBy;await command.ExecuteNonQueryAsync(token);return new(customerId,code,expires);
+    }
+
+    public async Task<string?> BindLineCustomerAsync(string code,string lineUserId,CancellationToken token)
+    {
+        const string sql="""
+SET XACT_ABORT ON; BEGIN TRANSACTION;
+DECLARE @customer varchar(50)=(SELECT customer_id FROM dbo.db_line_link_code WITH(UPDLOCK,HOLDLOCK) WHERE code=@code AND used_at IS NULL AND expires_at>SYSDATETIME());
+IF @customer IS NULL BEGIN ROLLBACK; SELECT CAST(NULL AS varchar(50)); RETURN; END;
+DELETE dbo.db_line_customer WHERE line_user_id=@lineUser AND customer_id<>@customer;
+MERGE dbo.db_line_customer AS target USING(SELECT @customer customer_id) source ON target.customer_id=source.customer_id
+WHEN MATCHED THEN UPDATE SET line_user_id=@lineUser,active=1,updated_at=SYSDATETIME()
+WHEN NOT MATCHED THEN INSERT(customer_id,line_user_id) VALUES(@customer,@lineUser);
+UPDATE dbo.db_line_link_code SET used_at=SYSDATETIME() WHERE code=@code;
+COMMIT; SELECT @customer;
+""";
+        await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@code",SqlDbType.Char,8).Value=code;command.Parameters.Add("@lineUser",SqlDbType.VarChar,64).Value=lineUserId;return Convert.ToString(await command.ExecuteScalarAsync(token)) is {Length:>0} customer?customer:null;
+    }
+
+    public async Task DeactivateLineUserAsync(string lineUserId,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_customer SET active=0,updated_at=SYSDATETIME() WHERE line_user_id=@lineUser",connection);command.Parameters.Add("@lineUser",SqlDbType.VarChar,64).Value=lineUserId;await command.ExecuteNonQueryAsync(token);}
+
+    public async Task<string?> GetLineUserIdAsync(string customerId,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("SELECT line_user_id FROM dbo.db_line_customer WHERE customer_id=@customer AND active=1",connection);command.Parameters.Add("@customer",SqlDbType.VarChar,50).Value=customerId;return Convert.ToString(await command.ExecuteScalarAsync(token)) is {Length:>0} user?user:null;}
+
+    public async Task<bool> ReserveLineNotificationAsync(string workId,string customerId,DateTime dueDate,string type,CancellationToken token)
+    {
+        const string sql="""
+SET XACT_ABORT ON; BEGIN TRANSACTION;
+IF EXISTS(SELECT 1 FROM dbo.db_line_notification WITH(UPDLOCK,HOLDLOCK) WHERE work_id=@work AND notification_type=@type AND due_date=@due AND status='SENT') BEGIN ROLLBACK; SELECT CAST(0 AS bit); RETURN; END;
+UPDATE dbo.db_line_notification SET customer_id=@customer,status='PENDING',error_message=NULL,updated_at=SYSDATETIME() WHERE work_id=@work AND notification_type=@type AND due_date=@due;
+IF @@ROWCOUNT=0 INSERT dbo.db_line_notification(work_id,customer_id,notification_type,due_date,status) VALUES(@work,@customer,@type,@due,'PENDING');
+COMMIT; SELECT CAST(1 AS bit);
+""";
+        await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@work",SqlDbType.VarChar,100).Value=workId;command.Parameters.Add("@customer",SqlDbType.VarChar,50).Value=customerId;command.Parameters.Add("@type",SqlDbType.VarChar,20).Value=type;command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;return Convert.ToBoolean(await command.ExecuteScalarAsync(token));
+    }
+
+    public async Task CompleteLineNotificationAsync(string workId,DateTime dueDate,string type,bool success,string? error,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_notification SET status=@status,sent_at=CASE WHEN @success=1 THEN SYSDATETIME() ELSE sent_at END,error_message=@error,updated_at=SYSDATETIME() WHERE work_id=@work AND notification_type=@type AND due_date=@due",connection);command.Parameters.Add("@status",SqlDbType.VarChar,20).Value=success?"SENT":"FAILED";command.Parameters.Add("@success",SqlDbType.Bit).Value=success;command.Parameters.Add("@error",SqlDbType.NVarChar,500).Value=(object?)error??DBNull.Value;command.Parameters.Add("@work",SqlDbType.VarChar,100).Value=workId;command.Parameters.Add("@type",SqlDbType.VarChar,20).Value=type;command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;await command.ExecuteNonQueryAsync(token);}
+
+    public async Task<IReadOnlyList<LineReminderTarget>> GetAutomaticLineRemindersAsync(DateTime dueDate,CancellationToken token)
+    {
+        const string sql="""
+SELECT w.work_id,w.Cus_id,w.Cus_name,w.license_plate,w.province,w.dete_extax,w.Name_center,l.line_user_id
+FROM dbo.Vw_allworking w JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id AND l.active=1
+WHERE CAST(w.dete_extax AS date) BETWEEN CAST(GETDATE() AS date) AND @due AND (w.flag<>'1' OR w.flag IS NULL);
+""";
+        var result=new List<LineReminderTarget>();await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;await using var reader=await command.ExecuteReaderAsync(token);while(await reader.ReadAsync(token))result.Add(new(Text(reader,"work_id"),Text(reader,"Cus_id"),Text(reader,"Cus_name"),Text(reader,"license_plate"),Text(reader,"province"),Date(reader,"dete_extax")!.Value,Text(reader,"Name_center"),Text(reader,"line_user_id")));return result;
+    }
+
     public async Task<IReadOnlyList<AttendanceRecord>> GetAttendanceAsync(string centerId,CancellationToken token)
     {
         const string sql="SELECT TOP(200) id,bridge_read_id,person_key,employee_name,masked_citizen_id,recorded_at,work_day,method,center_id,recorded_by FROM dbo.db_attendance WITH(NOLOCK) WHERE center_id=@center ORDER BY recorded_at DESC,id DESC";
@@ -283,14 +386,17 @@ FROM dbo.db_attendance WHERE (person_key=@person AND work_day=@day) OR bridge_re
     public async Task<IReadOnlyList<TaxNotificationRow>> GetTaxNotificationsAsync(string centerId, DateTime dueDate, CancellationToken token)
     {
         const string sql = """
-            SELECT work_id, Cus_name, Cus_card, Cus_Tel, license_plate, province,
-                dete_extax, alone, vat, Name_center
-            FROM dbo.Vw_allworking
-            WHERE id_center = @centerId
-              AND CAST(dete_extax AS date) = @dueDate
-              AND (flag <> '1' OR flag IS NULL)
-              AND (sendsms IS NULL OR sendsms = '')
-            ORDER BY Cus_name, license_plate;
+            SELECT w.work_id, w.Cus_id, w.Cus_name, w.Cus_card, w.Cus_Tel, w.license_plate, w.province,
+                w.dete_extax, w.alone, w.vat, w.Name_center,
+                CAST(CASE WHEN l.customer_id IS NULL THEN 0 ELSE 1 END AS bit) line_linked,
+                n.sent_at line_sent_at
+            FROM dbo.Vw_allworking w
+            LEFT JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id AND l.active=1
+            LEFT JOIN dbo.db_line_notification n ON n.work_id=w.work_id AND n.notification_type='TAX' AND n.due_date=CAST(w.dete_extax AS date) AND n.status='SENT'
+            WHERE w.id_center = @centerId
+              AND CAST(w.dete_extax AS date) = @dueDate
+              AND (w.flag <> '1' OR w.flag IS NULL)
+            ORDER BY w.Cus_name, w.license_plate;
             """;
         var result = new List<TaxNotificationRow>();
         await using var connection = new SqlConnection(ConnectionString());
@@ -300,9 +406,9 @@ FROM dbo.db_attendance WHERE (person_key=@person AND work_day=@day) OR bridge_re
         command.Parameters.Add("@dueDate", SqlDbType.Date).Value = dueDate.Date;
         await using var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))result.Add(new TaxNotificationRow(
-            Text(reader,"work_id"),Text(reader,"Cus_name"),Text(reader,"Cus_card"),Text(reader,"Cus_Tel"),
+            Text(reader,"work_id"),Text(reader,"Cus_id"),Text(reader,"Cus_name"),Text(reader,"Cus_card"),Text(reader,"Cus_Tel"),
             Text(reader,"license_plate"),Text(reader,"province"),Date(reader,"dete_extax"),
-            Decimal(reader,"alone")>0,Decimal(reader,"vat")>0,Text(reader,"Name_center")));
+            Decimal(reader,"alone")>0,Decimal(reader,"vat")>0,Text(reader,"Name_center"),Convert.ToBoolean(reader["line_linked"]),Date(reader,"line_sent_at")));
         return result;
     }
 

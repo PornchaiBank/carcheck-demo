@@ -70,7 +70,12 @@ public sealed record PasswordChangeInput(string UserId,string CurrentPassword,st
 public sealed record AttendanceInput(string BridgeReadId,string PersonKey,string Name,string MaskedId,DateTimeOffset RecordedAt,string Day,string Method,string CenterId,string RecordedBy);
 public sealed record AttendanceRecord(long Id,string BridgeReadId,string PersonKey,string Name,string MaskedId,DateTimeOffset RecordedAt,string Day,string Method,string CenterId,string RecordedBy);
 public sealed record InsuranceReportRow(string CustomerName, string CustomerAddress, string LicensePlate, string Province, DateTime? DueDate, string CenterName, string CenterAddress);
-public sealed record TaxNotificationRow(string WorkId, string CustomerName, string CitizenId, string Phone, string LicensePlate, string Province, DateTime? DueDate, bool HasAct, bool HasInspection, string CenterName);
+public sealed record TaxNotificationRow(string WorkId, string CustomerId, string CustomerName, string CitizenId, string Phone, string LicensePlate, string Province, DateTime? DueDate, bool HasAct, bool HasInspection, string CenterName, bool LineLinked, DateTime? LineSentAt);
+public sealed record LineLinkCodeInput(string CustomerId,string? CreatedBy);
+public sealed record LineLinkCodeResult(string CustomerId,string Code,DateTimeOffset ExpiresAt);
+public sealed record LineSendInput(string WorkId,string CustomerId,string CustomerName,string LicensePlate,string Province,DateTime DueDate,string CenterName);
+public sealed record LineSendResult(bool Sent,string Status,string Message);
+public sealed record LineReminderTarget(string WorkId,string CustomerId,string CustomerName,string LicensePlate,string Province,DateTime DueDate,string CenterName,string LineUserId);
 public sealed record RyProvinceRow(string Province, int Count);
 public sealed record RyReportResult(string CenterName, DateTime StartDate, DateTime EndDate, int Ry1, int Ry2, int Ry3, int Ry12, int WithAct, int WithoutAct, IReadOnlyList<RyProvinceRow> Provinces);
 

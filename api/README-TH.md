@@ -23,6 +23,26 @@ dotnet run --project api/src/Carcheck.Api --no-launch-profile
 
 Public HTTPS proxy หรือ Cloudflare Tunnel ต้องส่ง `X-Forwarded-Proto: https` เพื่อให้ API ออก Session Cookie แบบ `Secure` และ `SameSite=None` สำหรับ GitHub Pages
 
+## เชื่อม LINE Official Account
+
+ตั้ง Secret ผ่าน User Environment หรือ Secret Store เท่านั้น ห้ามใส่ค่าจริงใน Git:
+
+```powershell
+[Environment]::SetEnvironmentVariable('Line__ChannelSecret','CHANNEL_SECRET','User')
+[Environment]::SetEnvironmentVariable('Line__ChannelAccessToken','CHANNEL_ACCESS_TOKEN','User')
+[Environment]::SetEnvironmentVariable('Line__AutomaticEnabled','true','User')
+[Environment]::SetEnvironmentVariable('Line__LeadDays','30','User')
+[Environment]::SetEnvironmentVariable('Line__SendHour','9','User')
+```
+
+Webhook URL สำหรับ LINE Developers Console:
+
+```text
+https://laptop-jqdvbjtq.tail9f7b1b.ts.net/api/line/webhook
+```
+
+เปิด `Use webhook` และปิด Auto-reply ของ LINE OA หากไม่ต้องการให้ข้อความตอบซ้ำ ระบบตรวจ `x-line-signature` ทุกครั้ง ลูกค้าต้องเพิ่มเพื่อน OA แล้วส่ง `ผูก XXXXXXXX` ด้วยรหัส 8 ตัวที่พนักงานสร้างจากหน้าจอ รหัสมีอายุ 15 นาทีและใช้ได้ครั้งเดียว
+
 API นี้เป็น ASP.NET Core 10 สำหรับอ่านข้อมูลจาก SQL Server เดิมผ่าน HTTPS โดย React ไม่เชื่อมฐานข้อมูลโดยตรง
 
 ## สถานะ

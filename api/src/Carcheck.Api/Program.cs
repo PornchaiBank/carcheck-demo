@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Net;
+using System.Text.Json;
 using Carcheck.Api;
 using Microsoft.AspNetCore.HttpOverrides;
 
@@ -9,6 +10,8 @@ var origins = builder.Configuration.GetSection("Api:AllowedOrigins").Get<string[
 builder.Services.AddCors(options => options.AddPolicy("Web", policy => policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 builder.Services.AddSingleton<LegacySqlRepository>();
 builder.Services.AddSingleton<LoginSessionStore>();
+builder.Services.AddHttpClient<LineMessagingClient>();
+builder.Services.AddHostedService<LineReminderWorker>();
 builder.Services.AddProblemDetails();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -33,9 +36,10 @@ app.Use(async (context, next) =>
     var localDevelopment = app.Configuration.GetValue<bool>("Api:AllowLocalDevelopmentWithoutToken") && localOrigin && loopback;
     var publicRead = context.Request.Path.StartsWithSegments("/api/public");
     var publicAuthentication = context.Request.Path == "/api/auth/login" || context.Request.Path == "/api/auth/session";
+    var publicWebhook = context.Request.Path == "/api/line/webhook";
     var sessions = context.RequestServices.GetRequiredService<LoginSessionStore>();
     var hasSession = sessions.TryGet(context.Request.Cookies["carcheck.session"], out _);
-    if (!localDevelopment && !publicRead && !publicAuthentication && !hasSession)
+    if (!localDevelopment && !publicRead && !publicAuthentication && !publicWebhook && !hasSession)
     {
         var expected = app.Configuration["Api:Token"];
         if (string.IsNullOrWhiteSpace(expected))
@@ -75,8 +79,44 @@ app.MapGet("/api/health", (IConfiguration config) => Results.Ok(new
 var api = app.MapGroup("/api");
 const string sessionCookie="carcheck.session";
 await app.Services.GetRequiredService<LegacySqlRepository>().EnsureAttendanceTableAsync(CancellationToken.None);
+await app.Services.GetRequiredService<LegacySqlRepository>().EnsureLineTablesAsync(CancellationToken.None);
 api.MapGet("/attendance",async(string centerId,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(centerId)?Results.BadRequest(new{error="ต้องระบุศูนย์บริการ"}):Results.Ok(await repository.GetAttendanceAsync(centerId.Trim(),token)));
 api.MapPost("/attendance",async(AttendanceInput input,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(input.PersonKey)||string.IsNullOrWhiteSpace(input.CenterId)||!DateOnly.TryParse(input.Day,out _)?Results.BadRequest(new{error="ข้อมูลลงเวลาไม่ครบถ้วน"}):Results.Ok(await repository.SaveAttendanceAsync(input,token)));
+api.MapGet("/line/status",(LineMessagingClient line,IConfiguration configuration)=>Results.Ok(new{configured=line.Configured,automatic=configuration.GetValue<bool>("Line:AutomaticEnabled"),leadDays=configuration.GetValue("Line:LeadDays",30),sendHour=configuration.GetValue("Line:SendHour",9)}));
+api.MapPost("/line/link-code",async(LineLinkCodeInput input,LegacySqlRepository repository,CancellationToken token)=>
+{
+    if(string.IsNullOrWhiteSpace(input.CustomerId))return Results.BadRequest(new{error="กรุณาระบุรหัสลูกค้า"});
+    var customers=await repository.GetCustomersAsync(input.CustomerId.Trim(),token);if(!customers.Any(customer=>customer.Id==input.CustomerId.Trim()))return Results.NotFound(new{error="ไม่พบรหัสลูกค้า"});
+    return Results.Ok(await repository.CreateLineLinkCodeAsync(input.CustomerId.Trim(),input.CreatedBy?.Trim()??string.Empty,token));
+});
+api.MapPost("/line/send-tax",async(LineSendInput input,LegacySqlRepository repository,LineMessagingClient line,CancellationToken token)=>
+{
+    if(!line.Configured)return Results.Json(new{error="ยังไม่ได้ตั้งค่า LINE Channel Secret และ Access Token"},statusCode:503);
+    var lineUser=await repository.GetLineUserIdAsync(input.CustomerId,token);if(lineUser is null)return Results.BadRequest(new{error="ลูกค้ายังไม่ได้ผูกบัญชี LINE"});
+    if(!await repository.ReserveLineNotificationAsync(input.WorkId,input.CustomerId,input.DueDate,"TAX",token))return Results.Ok(new LineSendResult(false,"DUPLICATE","รายการนี้ส่ง LINE แล้ว"));
+    try{await line.PushAsync(lineUser,LineMessagingClient.TaxMessage(input),token);await repository.CompleteLineNotificationAsync(input.WorkId,input.DueDate,"TAX",true,null,token);return Results.Ok(new LineSendResult(true,"SENT","ส่ง LINE เรียบร้อย"));}
+    catch(Exception error){await repository.CompleteLineNotificationAsync(input.WorkId,input.DueDate,"TAX",false,error.Message,token);return Results.Json(new{error=error.Message},statusCode:502);}
+});
+api.MapPost("/line/webhook",async(HttpRequest request,LegacySqlRepository repository,LineMessagingClient line,CancellationToken token)=>
+{
+    using var memory=new MemoryStream();await request.Body.CopyToAsync(memory,token);var body=memory.ToArray();
+    if(!line.VerifySignature(body,request.Headers["x-line-signature"].ToString()))return Results.Unauthorized();
+    using var document=JsonDocument.Parse(body);
+    if(!document.RootElement.TryGetProperty("events",out var events))return Results.Ok();
+    foreach(var item in events.EnumerateArray())
+    {
+        var type=item.TryGetProperty("type",out var typeValue)?typeValue.GetString():null;
+        var userId=item.TryGetProperty("source",out var source)&&source.TryGetProperty("userId",out var user)?user.GetString():null;
+        if(string.IsNullOrWhiteSpace(userId))continue;
+        if(type=="unfollow"){await repository.DeactivateLineUserAsync(userId,token);continue;}
+        if(type=="follow"&&item.TryGetProperty("replyToken",out var followReply)){await line.ReplyAsync(followReply.GetString()!,"ยินดีต้อนรับครับ หากได้รับรหัสจากศูนย์บริการ ให้ส่งคำว่า ผูก ตามด้วยรหัส 8 ตัว เช่น ผูก ABCD2345",token);continue;}
+        if(type!="message"||!item.TryGetProperty("message",out var message)||message.GetProperty("type").GetString()!="text")continue;
+        var text=message.GetProperty("text").GetString()?.Trim()??string.Empty;if(!text.StartsWith("ผูก ",StringComparison.OrdinalIgnoreCase))continue;
+        var code=text[4..].Trim().ToUpperInvariant();var customer=code.Length==8?await repository.BindLineCustomerAsync(code,userId,token):null;
+        if(item.TryGetProperty("replyToken",out var reply))await line.ReplyAsync(reply.GetString()!,customer is null?"รหัสไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว กรุณาขอรหัสใหม่จากศูนย์บริการ":$"ผูกบัญชี LINE กับรหัสลูกค้า {customer} เรียบร้อยแล้วครับ",token);
+    }
+    return Results.Ok();
+});
 api.MapPost("/auth/login", async (LoginRequest request, HttpContext context, LegacySqlRepository repository, LoginSessionStore sessions, CancellationToken token) =>
 {
     var username = request.Username?.Trim() ?? string.Empty;

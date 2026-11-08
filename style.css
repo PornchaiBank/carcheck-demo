@@ -865,6 +865,11 @@ html:has(#tor-design.page-announcements),body:has(#tor-design.page-announcements
 #tor-design .card-bridge-download div{display:grid;gap:4px}
 #tor-design .card-bridge-download span{color:var(--sub);font-size:13px}
 #tor-design .card-bridge-download .action{flex:0 0 auto;text-decoration:none}
+#tor-design .line-notification-table td:first-child strong,#tor-design .line-notification-table td:first-child small{display:block}
+#tor-design .line-notification-table td:first-child small{color:var(--sub);margin-top:3px}
+#tor-design .line-linked,#tor-design .line-sent{background:#dff4e8;color:#286b4a;border-color:#bfe6d0}
+#tor-design .line-unlinked{background:#fff1dc;color:#8a5a18;border-color:#f3d4a8}
+#tor-design .line-search-actions{justify-content:space-between;margin-top:16px;color:var(--sub)}
 @media(max-width:700px){#tor-design .card-reader-admin-form{grid-template-columns:1fr}}
 @media(max-width:700px){#tor-design .card-bridge-download{align-items:stretch;flex-direction:column}#tor-design .card-bridge-download .action{text-align:center}}
 #tor-design .daily-report-table table,#tor-design .daily-crystal{min-width:1180px;table-layout:fixed}
