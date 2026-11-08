@@ -110,10 +110,11 @@ api.MapPost("/line/webhook",async(HttpRequest request,LegacySqlRepository reposi
         var userId=item.TryGetProperty("source",out var source)&&source.TryGetProperty("userId",out var user)?user.GetString():null;
         if(string.IsNullOrWhiteSpace(userId))continue;
         if(type=="unfollow"){await repository.DeactivateLineUserAsync(userId,token);continue;}
-        if(type=="follow"&&item.TryGetProperty("replyToken",out var followReply)){await line.ReplyAsync(followReply.GetString()!,"ยินดีต้อนรับครับ หากได้รับรหัสจากศูนย์บริการ ให้ส่งคำว่า ผูก ตามด้วยรหัส 8 ตัว เช่น ผูก ABCD2345",token);continue;}
+        if(type=="follow"&&item.TryGetProperty("replyToken",out var followReply)){await line.ReplyAsync(followReply.GetString()!,"ยินดีต้อนรับครับ หากได้รับรหัสจากศูนย์บริการ ให้ส่งรหัส 8 ตัวได้ทันที เช่น ABCD2345",token);continue;}
         if(type!="message"||!item.TryGetProperty("message",out var message)||message.GetProperty("type").GetString()!="text")continue;
-        var text=message.GetProperty("text").GetString()?.Trim()??string.Empty;if(!text.StartsWith("ผูก ",StringComparison.OrdinalIgnoreCase))continue;
-        var code=text[4..].Trim().ToUpperInvariant();var customer=code.Length==8?await repository.BindLineCustomerAsync(code,userId,token):null;
+        var text=message.GetProperty("text").GetString()?.Trim()??string.Empty;
+        var code=(text.StartsWith("ผูก ",StringComparison.OrdinalIgnoreCase)?text[4..]:text).Trim().ToUpperInvariant();if(code.Length!=8)continue;
+        var customer=await repository.BindLineCustomerAsync(code,userId,token);
         if(item.TryGetProperty("replyToken",out var reply))await line.ReplyAsync(reply.GetString()!,customer is null?"รหัสไม่ถูกต้อง หมดอายุ หรือถูกใช้แล้ว กรุณาขอรหัสใหม่จากศูนย์บริการ":$"ผูกบัญชี LINE กับรหัสลูกค้า {customer} เรียบร้อยแล้วครับ",token);
     }
     return Results.Ok();
