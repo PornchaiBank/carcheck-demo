@@ -132,7 +132,7 @@ COMMIT; SELECT CAST(1 AS bit);
     {
         const string sql="""
 SELECT w.work_id,w.Cus_id,w.Cus_name,w.license_plate,w.province,w.dete_extax,w.Name_center,l.line_user_id
-FROM dbo.Vw_allworking w JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id AND l.active=1
+FROM dbo.Vw_allworking w JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id COLLATE DATABASE_DEFAULT AND l.active=1
 WHERE CAST(w.dete_extax AS date) BETWEEN CAST(GETDATE() AS date) AND @due AND (w.flag<>'1' OR w.flag IS NULL);
 """;
         var result=new List<LineReminderTarget>();await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;await using var reader=await command.ExecuteReaderAsync(token);while(await reader.ReadAsync(token))result.Add(new(Text(reader,"work_id"),Text(reader,"Cus_id"),Text(reader,"Cus_name"),Text(reader,"license_plate"),Text(reader,"province"),Date(reader,"dete_extax")!.Value,Text(reader,"Name_center"),Text(reader,"line_user_id")));return result;
@@ -391,8 +391,8 @@ FROM dbo.db_attendance WHERE (person_key=@person AND work_day=@day) OR bridge_re
                 CAST(CASE WHEN l.customer_id IS NULL THEN 0 ELSE 1 END AS bit) line_linked,
                 n.sent_at line_sent_at
             FROM dbo.Vw_allworking w
-            LEFT JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id AND l.active=1
-            LEFT JOIN dbo.db_line_notification n ON n.work_id=w.work_id AND n.notification_type='TAX' AND n.due_date=CAST(w.dete_extax AS date) AND n.status='SENT'
+            LEFT JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id COLLATE DATABASE_DEFAULT AND l.active=1
+            LEFT JOIN dbo.db_line_notification n ON n.work_id=w.work_id COLLATE DATABASE_DEFAULT AND n.notification_type='TAX' AND n.due_date=CAST(w.dete_extax AS date) AND n.status='SENT'
             WHERE w.id_center = @centerId
               AND CAST(w.dete_extax AS date) = @dueDate
               AND (w.flag <> '1' OR w.flag IS NULL)
