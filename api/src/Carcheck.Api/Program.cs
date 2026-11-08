@@ -6,7 +6,7 @@ using Carcheck.Api;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
-var origins = builder.Configuration.GetSection("Api:AllowedOrigins").Get<string[]>() ?? [];
+var origins = builder.Configuration.GetSection("Api:AllowedOrigins").GetChildren().Select(item => item.Value).Where(value => !string.IsNullOrWhiteSpace(value)).Cast<string>().ToArray();
 builder.Services.AddCors(options => options.AddPolicy("Web", policy => policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 builder.Services.AddSingleton<LegacySqlRepository>();
 builder.Services.AddSingleton<LoginSessionStore>();
