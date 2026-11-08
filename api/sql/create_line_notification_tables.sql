@@ -66,4 +66,20 @@ END;
 IF NOT EXISTS(SELECT 1 FROM dbo.db_line_settings WHERE id=1)
  INSERT dbo.db_line_settings(id,automatic,lead_days,send_hour,send_minute,updated_by) VALUES(1,0,30,9,0,'SYSTEM');
 
-PRINT N'สร้างตารางเชื่อม LINE ประวัติแจ้งเตือน และการตั้งค่าส่งอัตโนมัติเรียบร้อยแล้ว';
+IF OBJECT_ID(N'dbo.db_line_center_settings',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.db_line_center_settings(
+  center_id varchar(200) NOT NULL CONSTRAINT PK_db_line_center_settings PRIMARY KEY,
+  automatic bit NOT NULL,
+  lead_days int NOT NULL,
+  send_hour tinyint NOT NULL,
+  send_minute tinyint NOT NULL,
+  updated_by varchar(200) NOT NULL,
+  updated_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_center_settings_updated DEFAULT(SYSDATETIME()),
+  CONSTRAINT CK_db_line_center_settings_lead_days CHECK(lead_days BETWEEN 0 AND 365),
+  CONSTRAINT CK_db_line_center_settings_hour CHECK(send_hour BETWEEN 0 AND 23),
+  CONSTRAINT CK_db_line_center_settings_minute CHECK(send_minute BETWEEN 0 AND 59)
+ );
+END;
+
+PRINT N'สร้างตารางเชื่อม LINE ประวัติแจ้งเตือน และการตั้งค่าส่งอัตโนมัติรายศูนย์เรียบร้อยแล้ว';

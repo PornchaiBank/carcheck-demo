@@ -100,13 +100,30 @@ BEGIN
 END;
 IF NOT EXISTS(SELECT 1 FROM dbo.db_line_settings WHERE id=1)
  INSERT dbo.db_line_settings(id,automatic,lead_days,send_hour,send_minute,updated_by) VALUES(1,@automatic,@leadDays,@sendHour,0,'SYSTEM');
+IF OBJECT_ID(N'dbo.db_line_center_settings',N'U') IS NULL
+BEGIN
+ CREATE TABLE dbo.db_line_center_settings(
+  center_id varchar(200) NOT NULL CONSTRAINT PK_db_line_center_settings PRIMARY KEY,
+  automatic bit NOT NULL,
+  lead_days int NOT NULL,
+  send_hour tinyint NOT NULL,
+  send_minute tinyint NOT NULL,
+  updated_by varchar(200) NOT NULL,
+  updated_at datetime2(0) NOT NULL CONSTRAINT DF_db_line_center_settings_updated DEFAULT(SYSDATETIME()),
+  CONSTRAINT CK_db_line_center_settings_lead_days CHECK(lead_days BETWEEN 0 AND 365),
+  CONSTRAINT CK_db_line_center_settings_hour CHECK(send_hour BETWEEN 0 AND 23),
+  CONSTRAINT CK_db_line_center_settings_minute CHECK(send_minute BETWEEN 0 AND 59)
+ );
+END;
 """;
         await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection){CommandTimeout=30};command.Parameters.Add("@automatic",SqlDbType.Bit).Value=_configuration.GetValue<bool>("Line:AutomaticEnabled");command.Parameters.Add("@leadDays",SqlDbType.Int).Value=Math.Clamp(_configuration.GetValue("Line:LeadDays",30),0,365);command.Parameters.Add("@sendHour",SqlDbType.TinyInt).Value=Math.Clamp(_configuration.GetValue("Line:SendHour",9),0,23);await command.ExecuteNonQueryAsync(token);
     }
 
-    public async Task<LineSettings> GetLineSettingsAsync(CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("SELECT automatic,lead_days,send_hour,send_minute FROM dbo.db_line_settings WHERE id=1",connection);await using var reader=await command.ExecuteReaderAsync(CommandBehavior.SingleRow,token);if(!await reader.ReadAsync(token))return new(false,30,9,0);return new(Convert.ToBoolean(reader["automatic"]),Convert.ToInt32(reader["lead_days"]),Convert.ToInt32(reader["send_hour"]),Convert.ToInt32(reader["send_minute"]));}
+    public async Task<LineSettings> GetLineSettingsAsync(string centerId,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("SELECT automatic,lead_days,send_hour,send_minute FROM dbo.db_line_center_settings WHERE center_id=@center",connection);command.Parameters.Add("@center",SqlDbType.VarChar,200).Value=centerId;await using var reader=await command.ExecuteReaderAsync(CommandBehavior.SingleRow,token);if(!await reader.ReadAsync(token))return new(centerId,false,30,9,0);return new(centerId,Convert.ToBoolean(reader["automatic"]),Convert.ToInt32(reader["lead_days"]),Convert.ToInt32(reader["send_hour"]),Convert.ToInt32(reader["send_minute"]));}
 
-    public async Task<LineSettings> UpdateLineSettingsAsync(LineSettingsInput input,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_settings SET automatic=@automatic,lead_days=@leadDays,send_hour=@sendHour,send_minute=@sendMinute,updated_by=@updatedBy,updated_at=SYSDATETIME() WHERE id=1",connection);command.Parameters.Add("@automatic",SqlDbType.Bit).Value=input.Automatic;command.Parameters.Add("@leadDays",SqlDbType.Int).Value=input.LeadDays;command.Parameters.Add("@sendHour",SqlDbType.TinyInt).Value=input.SendHour;command.Parameters.Add("@sendMinute",SqlDbType.TinyInt).Value=input.SendMinute;command.Parameters.Add("@updatedBy",SqlDbType.VarChar,200).Value=input.UpdatedBy?.Trim()??string.Empty;await command.ExecuteNonQueryAsync(token);return new(input.Automatic,input.LeadDays,input.SendHour,input.SendMinute);}
+    public async Task<IReadOnlyList<LineSettings>> GetAutomaticLineSettingsAsync(CancellationToken token){var rows=new List<LineSettings>();await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("SELECT center_id,automatic,lead_days,send_hour,send_minute FROM dbo.db_line_center_settings WHERE automatic=1",connection);await using var reader=await command.ExecuteReaderAsync(token);while(await reader.ReadAsync(token))rows.Add(new(Text(reader,"center_id"),true,Convert.ToInt32(reader["lead_days"]),Convert.ToInt32(reader["send_hour"]),Convert.ToInt32(reader["send_minute"])));return rows;}
+
+    public async Task<LineSettings> UpdateLineSettingsAsync(LineSettingsInput input,CancellationToken token){const string sql="MERGE dbo.db_line_center_settings AS target USING(SELECT @center center_id) source ON target.center_id=source.center_id WHEN MATCHED THEN UPDATE SET automatic=@automatic,lead_days=@leadDays,send_hour=@sendHour,send_minute=@sendMinute,updated_by=@updatedBy,updated_at=SYSDATETIME() WHEN NOT MATCHED THEN INSERT(center_id,automatic,lead_days,send_hour,send_minute,updated_by) VALUES(@center,@automatic,@leadDays,@sendHour,@sendMinute,@updatedBy);";await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@center",SqlDbType.VarChar,200).Value=input.CenterId.Trim();command.Parameters.Add("@automatic",SqlDbType.Bit).Value=input.Automatic;command.Parameters.Add("@leadDays",SqlDbType.Int).Value=input.LeadDays;command.Parameters.Add("@sendHour",SqlDbType.TinyInt).Value=input.SendHour;command.Parameters.Add("@sendMinute",SqlDbType.TinyInt).Value=input.SendMinute;command.Parameters.Add("@updatedBy",SqlDbType.VarChar,200).Value=input.UpdatedBy?.Trim()??string.Empty;await command.ExecuteNonQueryAsync(token);return new(input.CenterId.Trim(),input.Automatic,input.LeadDays,input.SendHour,input.SendMinute);}
 
     public async Task<LineLinkCodeResult> CreateLineLinkCodeAsync(string customerId,string createdBy,CancellationToken token)
     {
@@ -153,14 +170,14 @@ COMMIT; SELECT CAST(1 AS bit);
 
     public async Task CompleteLineNotificationAsync(string workId,DateTime dueDate,string type,bool success,string? error,CancellationToken token){await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand("UPDATE dbo.db_line_notification SET status=@status,sent_at=CASE WHEN @success=1 THEN SYSDATETIME() ELSE sent_at END,error_message=@error,updated_at=SYSDATETIME() WHERE work_id=@work AND notification_type=@type AND due_date=@due",connection);command.Parameters.Add("@status",SqlDbType.VarChar,20).Value=success?"SENT":"FAILED";command.Parameters.Add("@success",SqlDbType.Bit).Value=success;command.Parameters.Add("@error",SqlDbType.NVarChar,500).Value=(object?)error??DBNull.Value;command.Parameters.Add("@work",SqlDbType.VarChar,100).Value=workId;command.Parameters.Add("@type",SqlDbType.VarChar,20).Value=type;command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;await command.ExecuteNonQueryAsync(token);}
 
-    public async Task<IReadOnlyList<LineReminderTarget>> GetAutomaticLineRemindersAsync(DateTime dueDate,CancellationToken token)
+    public async Task<IReadOnlyList<LineReminderTarget>> GetAutomaticLineRemindersAsync(string centerId,DateTime dueDate,CancellationToken token)
     {
         const string sql="""
 SELECT w.work_id,w.Cus_id,w.Cus_name,w.license_plate,w.province,w.dete_extax,w.Name_center,l.line_user_id
 FROM dbo.Vw_allworking w JOIN dbo.db_line_customer l ON l.customer_id=w.Cus_id COLLATE DATABASE_DEFAULT AND l.active=1
-WHERE CAST(w.dete_extax AS date) BETWEEN CAST(GETDATE() AS date) AND @due AND (w.flag<>'1' OR w.flag IS NULL);
+WHERE w.id_center=@center AND CAST(w.dete_extax AS date) BETWEEN CAST(GETDATE() AS date) AND @due AND (w.flag<>'1' OR w.flag IS NULL);
 """;
-        var result=new List<LineReminderTarget>();await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;await using var reader=await command.ExecuteReaderAsync(token);while(await reader.ReadAsync(token))result.Add(new(Text(reader,"work_id"),Text(reader,"Cus_id"),Text(reader,"Cus_name"),Text(reader,"license_plate"),Text(reader,"province"),Date(reader,"dete_extax")!.Value,Text(reader,"Name_center"),Text(reader,"line_user_id")));return result;
+        var result=new List<LineReminderTarget>();await using var connection=new SqlConnection(ConnectionString());await connection.OpenAsync(token);await using var command=new SqlCommand(sql,connection);command.Parameters.Add("@center",SqlDbType.VarChar,200).Value=centerId;command.Parameters.Add("@due",SqlDbType.Date).Value=dueDate.Date;await using var reader=await command.ExecuteReaderAsync(token);while(await reader.ReadAsync(token))result.Add(new(Text(reader,"work_id"),Text(reader,"Cus_id"),Text(reader,"Cus_name"),Text(reader,"license_plate"),Text(reader,"province"),Date(reader,"dete_extax")!.Value,Text(reader,"Name_center"),Text(reader,"line_user_id")));return result;
     }
 
     public async Task<IReadOnlyList<AttendanceRecord>> GetAttendanceAsync(string centerId,CancellationToken token)

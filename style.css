@@ -875,9 +875,8 @@ html:has(#tor-design.page-announcements),body:has(#tor-design.page-announcements
 #tor-design .line-notification-table td:first-child small{color:var(--sub);margin-top:3px}
 #tor-design .line-notification-table{max-height:calc(100vh - 365px);min-height:210px;overflow:auto}
 #tor-design .line-notification-table thead{position:sticky;top:0;z-index:2}
-#tor-design .line-search-grid{grid-template-columns:minmax(240px,1.4fr) minmax(190px,1fr) auto auto auto;align-items:end}
+#tor-design .line-search-grid{grid-template-columns:minmax(240px,1.4fr) minmax(190px,1fr) auto auto;align-items:end}
 #tor-design .line-search-grid>.action{min-height:42px;margin-bottom:0;padding-inline:24px}
-#tor-design .line-search-grid>.line-search-status{align-self:center;display:inline-flex;align-items:center;justify-content:center;min-height:32px;white-space:nowrap}
 #tor-design .line-search-grid>.line-settings-button{min-height:42px;white-space:nowrap}
 #tor-design .line-auto-status{display:inline-block;margin-left:8px;color:#8a5a18;font-size:12px}
 #tor-design .line-heading-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}

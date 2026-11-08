@@ -60,8 +60,8 @@ public sealed record FaultInput(string CustomerId,string CustomerName,string Veh
 public sealed record MenuItem(string Id, string Name, string Url);
 public sealed record DatabaseHealth(string Status, string Database, bool LegacySchemaFound, string Authentication);
 public sealed record DatabaseSummary(long Centers, long Customers, long Jobs, long Faults, long Staff, long LineLinkedCustomers, long LineSent, long LineFailed);
-public sealed record LineSettings(bool Automatic, int LeadDays, int SendHour, int SendMinute);
-public sealed record LineSettingsInput(bool Automatic, int LeadDays, int SendHour, int SendMinute, string? UpdatedBy);
+public sealed record LineSettings(string CenterId, bool Automatic, int LeadDays, int SendHour, int SendMinute);
+public sealed record LineSettingsInput(string CenterId, bool Automatic, int LeadDays, int SendHour, int SendMinute, string? UpdatedBy);
 public sealed record PublicSlide(int Id, string Name, string Type, string Path, string Url);
 public sealed record PublicImageInfo(string Id, string Name, string Url);
 public sealed record PublicHomeContent(IReadOnlyList<string> Messages, IReadOnlyList<PublicSlide> Slides, bool HasHeaderImage, IReadOnlyList<PublicImageInfo> Announcements, IReadOnlyList<WebsiteEntryRecord> WebsiteEntries);
