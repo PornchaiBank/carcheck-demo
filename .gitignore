@@ -10,4 +10,9 @@ bridge/app/
 *.log
 *.dpapi
 appsettings.Local.json
+appsettings.*.Local.json
+.tmp-carchecktor/
+.tmp/
 .vs/
+.dotnet-home/
+.nuget-packages/

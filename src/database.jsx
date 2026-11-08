@@ -1,0 +1,80 @@
+import React,{useState} from 'react';
+
+const apiBase='http://127.0.0.1:5188/api';
+async function get(path,token){const headers=token?{Authorization:`Bearer ${token}`}:{ };const response=await fetch(apiBase+path,{headers,cache:'no-store',credentials:'omit'});const body=await response.json().catch(()=>null);if(!response.ok)throw new Error(body?.detail||body?.error||`API ตอบกลับ ${response.status}`);return body;}
+async function send(path,method,data,token){const headers={'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})};const response=await fetch(apiBase+path,{method,headers,cache:'no-store',credentials:'omit',body:data===undefined?undefined:JSON.stringify(data)});const body=await response.json().catch(()=>null);if(!response.ok)throw new Error(body?.detail||body?.error||`API ตอบกลับ ${response.status}`);return body;}
+const mapJob=job=>({id:job.workId,customerId:job.customerId,customerName:job.customerName,citizenId:job.citizenId||'',phone:job.customerPhone||'',address:job.customerAddress||'',customerProvince:job.customerProvince||'',customerAmphur:job.customerAmphur||'',customerDistrict:job.customerDistrict||'',zipcode:job.customerZipcode||'',licensePlate:job.licensePlate,registrationProvince:job.province,receivedDate:job.receivedAt?.slice(0,10)||'',taxExpiry:job.taxExpiry?.slice(0,10)||'',insuranceExpiry:job.insuranceExpiry?.slice(0,10)||'',total:job.total||0,insurerId:job.insurerId||'',insurerName:job.insurerName||'',inspectionFee:job.inspectionFee||0,act1:job.act1||0,act2:job.act2||0,act3:job.act3||0,act12:job.act12||0,otherFee:job.otherFee||0,taxFee:job.taxFee||0,note:job.note||'',vin:job.vin||'',vehicleTypeId:job.vehicleTypeId||'',centerName:job.centerName||'',vehicleType:'งานจากระบบเดิม',status:'ฐานข้อมูล'});
+export async function fetchCenterData(centerId,token=''){const encoded=encodeURIComponent(centerId),key=token.trim();const [jobs,faults,summary]=await Promise.all([get(`/jobs?centerId=${encoded}`,key),get(`/faults?centerId=${encoded}`,key),get(`/database/summary?centerId=${encoded}`,key)]);return {jobs:jobs.map(mapJob),faults,summary};}
+export async function fetchCustomers(search='',token=''){return get(`/customers?search=${encodeURIComponent(search.trim())}`,token.trim());}
+export async function createDatabaseJob(data,token=''){return send('/jobs','POST',data,token.trim());}
+export async function updateDatabaseJob(id,data,token=''){return send(`/jobs/${encodeURIComponent(id)}`,'PUT',data,token.trim());}
+export async function deleteDatabaseJob(id,centerId,token=''){return send(`/jobs/${encodeURIComponent(id)}?centerId=${encodeURIComponent(centerId)}`,'DELETE',undefined,token.trim());}
+export async function createDatabaseFault(data,token=''){return send('/faults','POST',data,token.trim());}
+export async function updateDatabaseFault(id,data,token=''){return send(`/faults/${encodeURIComponent(id)}`,'PUT',data,token.trim());}
+export async function deleteDatabaseFault(id,token=''){return send(`/faults/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchDatabaseFaultImage(id,slot,token=''){const headers=token.trim()?{Authorization:`Bearer ${token.trim()}`}:{ };const response=await fetch(`${apiBase}/faults/${encodeURIComponent(id)}/images/${slot}`,{headers,cache:'no-store'});if(response.status===404)return null;if(!response.ok)throw Error(`ไม่สามารถโหลดรูปที่ ${slot} ได้`);const blob=await response.blob();return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)});}
+export async function deleteDatabaseFaultImage(id,slot,token=''){return send(`/faults/${encodeURIComponent(id)}/images/${slot}`,'DELETE',undefined,token.trim());}
+export async function changeAccountPassword(data,token=''){return send('/account/password','PUT',data,token.trim());}
+export async function fetchInsuranceReport(centerId,dueDate,token=''){if(!centerId||!dueDate)return [];return get(`/reports/insurance?centerId=${encodeURIComponent(centerId)}&dueDate=${encodeURIComponent(dueDate)}`,token.trim());}
+export async function fetchTaxReport(centerId,dueDate,token=''){if(!centerId||!dueDate)return [];return get(`/reports/tax?centerId=${encodeURIComponent(centerId)}&dueDate=${encodeURIComponent(dueDate)}`,token.trim());}
+export async function fetchTaxNotifications(centerId,dueDate,token=''){if(!centerId||!dueDate)return [];return get(`/notifications/tax?centerId=${encodeURIComponent(centerId)}&dueDate=${encodeURIComponent(dueDate)}`,token.trim());}
+export async function fetchRyReport(centerId,startDate,endDate,token=''){if(!centerId||!startDate||!endDate)return null;return get(`/reports/ry?centerId=${encodeURIComponent(centerId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,token.trim());}
+export async function fetchCenters(token=''){return get('/centers',token.trim());}
+export async function createCenter(data,token=''){return send('/centers','POST',data,token.trim());}
+export async function updateCenter(id,data,token=''){return send(`/centers/${encodeURIComponent(id)}`,'PUT',data,token.trim());}
+export async function deleteCenter(id,token=''){return send(`/centers/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchInsurers(token=''){return get('/insurers',token.trim());}
+export async function createInsurer(data,token=''){return send('/insurers','POST',data,token.trim());}
+export async function updateInsurer(id,data,token=''){return send(`/insurers/${encodeURIComponent(id)}`,'PUT',data,token.trim());}
+export async function deleteInsurer(id,token=''){return send(`/insurers/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchVehicleTypes(token=''){return get('/vehicle-types',token.trim());}
+export async function createVehicleType(data,token=''){return send('/vehicle-types','POST',data,token.trim());}
+export async function updateVehicleType(id,data,token=''){return send(`/vehicle-types/${encodeURIComponent(id)}`,'PUT',data,token.trim());}
+export async function deleteVehicleType(id,token=''){return send(`/vehicle-types/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchStaff(viewerId='',token=''){return get(`/staff?viewerId=${encodeURIComponent(viewerId)}`,token.trim());}
+export async function createStaff(data,token=''){return send('/staff','POST',data,token.trim());}
+export async function updateStaff(id,data,token=''){return send(`/staff/${encodeURIComponent(id)}`,'PUT',data,token.trim());}
+export async function deleteStaff(id,token=''){return send(`/staff/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchPermissions(viewerId='',token=''){return get(`/permissions?viewerId=${encodeURIComponent(viewerId)}`,token.trim());}
+export async function createPermissions(userId,programIds,token=''){return send(`/permissions/${encodeURIComponent(userId)}`,'POST',{programIds},token.trim());}
+export async function updatePermissions(userId,programIds,token=''){return send(`/permissions/${encodeURIComponent(userId)}`,'PUT',{programIds},token.trim());}
+export async function deletePermissions(userId,token=''){return send(`/permissions/${encodeURIComponent(userId)}`,'DELETE',undefined,token.trim());}
+export async function fetchInternalAnnouncements(token=''){return get('/internal-announcements',token.trim());}
+export async function createInternalAnnouncement(text,token=''){return send('/internal-announcements','POST',{text},token.trim());}
+export async function updateInternalAnnouncement(id,text,token=''){return send(`/internal-announcements/${encodeURIComponent(id)}`,'PUT',{text},token.trim());}
+export async function deleteInternalAnnouncement(id,token=''){return send(`/internal-announcements/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchInternalImages(token=''){return get('/internal-announcement-images',token.trim());}
+export async function fetchInternalImagePreview(id,token=''){const headers=token.trim()?{Authorization:`Bearer ${token.trim()}`}:{ };const response=await fetch(`${apiBase}/internal-announcement-images/${encodeURIComponent(id)}`,{headers,cache:'no-store',credentials:'omit'});if(!response.ok)throw new Error(`ไม่สามารถโหลดตัวอย่างรูปประกาศได้ (${response.status})`);const blob=await response.blob();return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('ไม่สามารถอ่านตัวอย่างรูปประกาศได้'));reader.readAsDataURL(blob)});}
+export async function updateInternalImage(id,dataUrl,token=''){return send(`/internal-announcement-images/${encodeURIComponent(id)}`,'PUT',{dataUrl},token.trim());}
+export async function deleteInternalImage(id,token=''){return send(`/internal-announcement-images/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchWebsiteEntries(token=''){return get('/website-entries',token.trim());}
+export async function fetchWebsiteEntryPreview(id,token=''){const headers=token.trim()?{Authorization:`Bearer ${token.trim()}`}:{ };const response=await fetch(`${apiBase}/website-entries/${encodeURIComponent(id)}/image`,{headers,cache:'no-store',credentials:'omit'});if(!response.ok)throw new Error(`ไม่สามารถโหลดรูปหน้าเข้าเว็บไซต์ได้ (${response.status})`);const blob=await response.blob();return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('ไม่สามารถอ่านรูปหน้าเข้าเว็บไซต์ได้'));reader.readAsDataURL(blob)});}
+export async function createWebsiteEntry(visible,dataUrl,token=''){return send('/website-entries','POST',{visible,dataUrl},token.trim());}
+export async function updateWebsiteEntry(id,visible,dataUrl,token=''){return send(`/website-entries/${encodeURIComponent(id)}`,'PUT',{visible,dataUrl:dataUrl||null},token.trim());}
+export async function deleteWebsiteEntry(id,token=''){return send(`/website-entries/${encodeURIComponent(id)}`,'DELETE',undefined,token.trim());}
+export async function fetchCustomerAnnouncements(token=''){return get('/customer-announcements',token.trim());}
+export async function fetchCustomerAnnouncementPreview(id,token=''){const headers=token.trim()?{Authorization:`Bearer ${token.trim()}`}:{ };const response=await fetch(`${apiBase}/customer-announcements/${encodeURIComponent(id)}/image`,{headers,cache:'no-store'});if(!response.ok)throw Error(`ไม่สามารถโหลดรูปประกาศได้ (${response.status})`);const blob=await response.blob();return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('ไม่สามารถอ่านรูปประกาศได้'));reader.readAsDataURL(blob)});}
+export async function createCustomerAnnouncement(data,token=''){return send('/customer-announcements','POST',data,token.trim());}
+export async function updateCustomerAnnouncement(id,data,token=''){return send(`/customer-announcements/${id}`,'PUT',data,token.trim());}
+export async function deleteCustomerAnnouncement(id,token=''){return send(`/customer-announcements/${id}`,'DELETE',undefined,token.trim());}
+export async function fetchDatabaseData(token='',preferredCenterId=''){
+ const key=token.trim();
+ const [health,summary,centers,insurers,vehicleTypes,provinces,addressOptions]=await Promise.all([get('/database/health',key),get('/database/summary',key),get('/centers',key),get('/master/insurers',key),get('/master/vehicle-types',key),get('/master/provinces',key),get('/master/address-options',key)]);
+ const next={connected:true,health,summary,centers,customers:[],insurers,vehicleTypes,provinces,addressOptions,jobs:[],faults:[],centerId:centers[0]?.id||'',lastLoaded:new Date().toISOString()};
+ if(!centers.length)return next;
+ let selected=centers.some(center=>center.id===preferredCenterId)?preferredCenterId:centers[0].id,selectedJobs=[];
+ if(preferredCenterId&&selected===preferredCenterId)selectedJobs=await get(`/jobs?centerId=${encodeURIComponent(selected)}`,key);
+ else for(const center of centers){const rows=await get(`/jobs?centerId=${encodeURIComponent(center.id)}`,key);if(rows.length){selected=center.id;selectedJobs=rows;break;}}
+ const [faults,centerSummary]=await Promise.all([get(`/faults?centerId=${encodeURIComponent(selected)}`,key),get(`/database/summary?centerId=${encodeURIComponent(selected)}`,key)]);
+ return {...next,summary:centerSummary,centerId:selected,jobs:selectedJobs.map(mapJob),faults};
+}
+
+function SummaryIcon({name}){if(name==='customers')return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;if(name==='jobs')return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>;if(name==='faults')return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>;return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/></svg>}
+export default function DatabaseConnection({token,setToken,data,setData,user}){
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const loadCenter=async(centerId,current=data)=>{const result=await fetchCenterData(centerId,token);setData({...current,...result,connected:true,centerId,lastLoaded:new Date().toISOString()});};
+ const connect=async event=>{event?.preventDefault();setBusy(true);setError('');try{setData(await fetchDatabaseData(token,user?.centerId||''));}catch(e){setData({...data,connected:false});setError(e.message)}finally{setBusy(false)}};
+ const changeCenter=async event=>{const centerId=event.target.value;setBusy(true);setError('');try{await loadCenter(centerId)}catch(e){setError(e.message)}finally{setBusy(false)}};
+ const isAdmin=String(user?.userType||'').toLowerCase()==='admin';
+ return <section className="panel database-connect" aria-label="ข้อมูลศูนย์บริการ"><div className="row"><div><h2>ข้อมูลศูนย์บริการ</h2></div><span className={'pill '+(data.connected?'database-ready':'')}>{data.connected?'พร้อมใช้งาน':busy?'กำลังโหลด…':'ยังไม่พร้อม'}</span></div>{!data.connected&&!busy?<form className="bridge-form" onSubmit={connect}><label>API token (กรณีไม่ได้รันโหมด Local)<input type="password" value={token} onChange={e=>setToken(e.target.value)} autoComplete="off" placeholder="ไม่ต้องกรอกเมื่อรัน Local ตามคู่มือ"/></label><button className="action">ลองโหลดข้อมูลอีกครั้ง</button></form>:data.connected?<><div className="bridge-form"><label aria-label="เลือกศูนย์บริการ"><select value={data.centerId} onChange={changeCenter} disabled={busy||!isAdmin}>{data.centers.map(center=><option key={center.id} value={center.id}>{center.id} · {center.name}</option>)}</select></label></div><div className={'database-summary '+(isAdmin?'admin':'')}><span className="summary-card customers"><i><SummaryIcon name="customers"/></i><em>ลูกค้าทั้งหมด</em><strong>{data.summary?.customers??0}</strong></span><span className="summary-card jobs"><i><SummaryIcon name="jobs"/></i><em>งานทั้งหมด</em><strong>{data.summary?.jobs??0}</strong></span><span className="summary-card faults"><i><SummaryIcon name="faults"/></i><em>ข้อบกพร่องทั้งหมด</em><strong>{data.summary?.faults??0}</strong></span>{isAdmin&&<span className="summary-card staff"><i><SummaryIcon name="staff"/></i><em>พนักงาน</em><strong>{data.summary?.staff??0}</strong></span>}</div></>:<p>กำลังอ่านข้อมูลศูนย์…</p>}{error&&<div className="notice" role="alert">{error}</div>}</section>;
+}
