@@ -875,8 +875,10 @@ html:has(#tor-design.page-announcements),body:has(#tor-design.page-announcements
 #tor-design .line-notification-table td:first-child small{color:var(--sub);margin-top:3px}
 #tor-design .line-notification-table{max-height:calc(100vh - 365px);min-height:210px;overflow:auto}
 #tor-design .line-notification-table thead{position:sticky;top:0;z-index:2}
-#tor-design .line-search-grid{grid-template-columns:minmax(260px,1.4fr) minmax(210px,1fr) auto;align-items:end}
+#tor-design .line-search-grid{grid-template-columns:minmax(240px,1.4fr) minmax(190px,1fr) auto auto auto;align-items:end}
 #tor-design .line-search-grid>.action{min-height:42px;margin-bottom:0;padding-inline:24px}
+#tor-design .line-search-grid>.line-search-status{align-self:center;display:inline-flex;align-items:center;justify-content:center;min-height:32px;white-space:nowrap}
+#tor-design .line-search-grid>.line-settings-button{min-height:42px;white-space:nowrap}
 #tor-design .line-auto-status{display:inline-block;margin-left:8px;color:#8a5a18;font-size:12px}
 #tor-design .line-heading-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
 #tor-design .line-heading-actions>button{min-height:36px;white-space:nowrap}
@@ -889,7 +891,7 @@ html:has(#tor-design.page-announcements),body:has(#tor-design.page-announcements
 #tor-design .line-linked,#tor-design .line-sent{background:#dff4e8;color:#286b4a;border-color:#bfe6d0}
 #tor-design .line-unlinked{background:#fff1dc;color:#8a5a18;border-color:#f3d4a8}
 #tor-design .line-search-actions{justify-content:space-between;margin-top:16px;color:var(--sub)}
-@media(max-width:800px){#tor-design .line-search-grid,#tor-design .line-settings-grid{grid-template-columns:1fr}#tor-design .line-search-grid>.action{width:100%}#tor-design .line-notification-table{max-height:58vh}#tor-design .line-heading-actions{justify-content:flex-start}}
+@media(max-width:800px){#tor-design .line-search-grid,#tor-design .line-settings-grid{grid-template-columns:1fr}#tor-design .line-search-grid>.action,#tor-design .line-search-grid>.line-settings-button{width:100%}#tor-design .line-notification-table{max-height:58vh}#tor-design .line-heading-actions{justify-content:flex-start}}
 @media(max-width:700px){#tor-design .card-reader-admin-form{grid-template-columns:1fr}}
 @media(max-width:700px){#tor-design .card-bridge-download{align-items:stretch;flex-direction:column}#tor-design .card-bridge-download .action{text-align:center}}
 #tor-design .daily-report-table table,#tor-design .daily-crystal{min-width:1180px;table-layout:fixed}
