@@ -59,7 +59,7 @@ public sealed record FaultSummary(string Id, string CustomerId, string CustomerN
 public sealed record FaultInput(string CustomerId,string CustomerName,string VehicleId,string Description,string CenterId,string? UserId,string? Image1,string? Image2,string? Image3);
 public sealed record MenuItem(string Id, string Name, string Url);
 public sealed record DatabaseHealth(string Status, string Database, bool LegacySchemaFound, string Authentication);
-public sealed record DatabaseSummary(long Centers, long Customers, long Jobs, long Faults, long Staff);
+public sealed record DatabaseSummary(long Centers, long Customers, long Jobs, long Faults, long Staff, long LineLinkedCustomers, long LineSent, long LineFailed);
 public sealed record PublicSlide(int Id, string Name, string Type, string Path, string Url);
 public sealed record PublicImageInfo(string Id, string Name, string Url);
 public sealed record PublicHomeContent(IReadOnlyList<string> Messages, IReadOnlyList<PublicSlide> Slides, bool HasHeaderImage, IReadOnlyList<PublicImageInfo> Announcements, IReadOnlyList<WebsiteEntryRecord> WebsiteEntries);

@@ -816,7 +816,10 @@ FROM dbo.db_attendance WHERE (person_key=@person AND work_day=@day) OR bridge_re
                 (SELECT COUNT_BIG(DISTINCT Cus_id) FROM dbo.db_working WITH (NOLOCK) WHERE (flag <> '1' OR flag IS NULL) AND (@centerId='' OR id_center=@centerId)) AS customers,
                 (SELECT COUNT_BIG(*) FROM dbo.db_working WITH (NOLOCK) WHERE (flag <> '1' OR flag IS NULL) AND (@centerId='' OR id_center=@centerId)) AS jobs,
                 (SELECT COUNT_BIG(*) FROM dbo.db_fault_des WITH (NOLOCK) WHERE @centerId='' OR id_center=@centerId) AS faults,
-                (SELECT COUNT_BIG(*) FROM dbo.db_staff WITH (NOLOCK) WHERE (flag <> '1' OR flag IS NULL) AND (@centerId='' OR Id_center=@centerId)) AS staff;
+                (SELECT COUNT_BIG(*) FROM dbo.db_staff WITH (NOLOCK) WHERE (flag <> '1' OR flag IS NULL) AND (@centerId='' OR Id_center=@centerId)) AS staff,
+                (SELECT COUNT_BIG(*) FROM dbo.db_line_customer lc WITH (NOLOCK) WHERE lc.active=1 AND (@centerId='' OR EXISTS(SELECT 1 FROM dbo.db_working w WITH (NOLOCK) WHERE (w.flag<>'1' OR w.flag IS NULL) AND w.id_center=@centerId AND w.Cus_id COLLATE DATABASE_DEFAULT=lc.customer_id COLLATE DATABASE_DEFAULT))) AS line_linked_customers,
+                (SELECT COUNT_BIG(*) FROM dbo.db_line_notification n WITH (NOLOCK) WHERE n.status='SENT' AND (@centerId='' OR EXISTS(SELECT 1 FROM dbo.Vw_allworking w WHERE w.id_center=@centerId AND w.work_id COLLATE DATABASE_DEFAULT=n.work_id COLLATE DATABASE_DEFAULT))) AS line_sent,
+                (SELECT COUNT_BIG(*) FROM dbo.db_line_notification n WITH (NOLOCK) WHERE n.status='FAILED' AND (@centerId='' OR EXISTS(SELECT 1 FROM dbo.Vw_allworking w WHERE w.id_center=@centerId AND w.work_id COLLATE DATABASE_DEFAULT=n.work_id COLLATE DATABASE_DEFAULT))) AS line_failed;
             """;
         await using var connection = new SqlConnection(ConnectionString());
         await connection.OpenAsync(token);
@@ -824,7 +827,7 @@ FROM dbo.db_attendance WHERE (person_key=@person AND work_day=@day) OR bridge_re
         command.Parameters.Add("@centerId",SqlDbType.VarChar,200).Value=centerId??string.Empty;
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, token);
         if (!await reader.ReadAsync(token))throw new InvalidOperationException("SQL Server ไม่คืนข้อมูลสรุป");
-        return new DatabaseSummary(Convert.ToInt64(reader["centers"]), Convert.ToInt64(reader["customers"]), Convert.ToInt64(reader["jobs"]), Convert.ToInt64(reader["faults"]), Convert.ToInt64(reader["staff"]));
+        return new DatabaseSummary(Convert.ToInt64(reader["centers"]), Convert.ToInt64(reader["customers"]), Convert.ToInt64(reader["jobs"]), Convert.ToInt64(reader["faults"]), Convert.ToInt64(reader["staff"]), Convert.ToInt64(reader["line_linked_customers"]), Convert.ToInt64(reader["line_sent"]), Convert.ToInt64(reader["line_failed"]));
     }
 
     public async Task<PublicHomeContent> GetPublicHomeAsync(CancellationToken token)
