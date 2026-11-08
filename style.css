@@ -851,7 +851,22 @@ html:has(#tor-design.page-announcements),body:has(#tor-design.page-announcements
 #tor-design .line-send-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:0;border-radius:9px;padding:7px 11px;background:#dff5e5;color:#18763b;font-weight:400}
 #tor-design .line-send-button:hover{background:#ccefd7}
 #tor-design .line-send-button svg{width:20px;height:20px;fill:#06c755}
+#tor-design .attendance-demo{font-size:0}
+#tor-design .attendance-demo::after{content:'อ่านจากเครื่องจริงบน Windows · บันทึกลงฐานข้อมูลของศูนย์บริการ';font-size:12px}
+#tor-design .attendance-records>.attendance-note{font-size:0}
+#tor-design .attendance-records>.attendance-note::after{content:'ข้อมูลจัดเก็บตามศูนย์บริการและแสดงแบบอ่านอย่างเดียว · ป้องกันบุคคลเดียวกันบันทึกซ้ำในวันเดียวกัน · ไม่จัดเก็บเลขบัตรประชาชนเต็ม';font-size:12px}
 @media(max-width:800px){#tor-design.page-sms{height:auto;overflow:visible}#tor-design.page-sms .layout{height:auto}#tor-design.page-sms main,#tor-design.page-sms .page-content{overflow:visible}#tor-design .sms-filter{grid-template-columns:1fr}#tor-design .sms-results .tablewrap{max-height:58vh}}
+#tor-design.page-attendance .attendance-reader-settings{display:none!important}
+#tor-design .card-reader-admin{max-width:900px;margin-inline:auto}
+#tor-design .card-reader-admin-form{display:grid;grid-template-columns:minmax(280px,1.4fr) minmax(240px,1fr);gap:14px;margin-top:20px}
+#tor-design .card-reader-admin ol{margin:16px 0;padding-left:22px;color:var(--sub)}
+#tor-design main:has(.card-reader-admin)>.form-actions{display:none}
+#tor-design .card-bridge-download{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:20px;padding:16px 18px;border:1px solid #cfe2f3;border-radius:14px;background:#f2f8fd}
+#tor-design .card-bridge-download div{display:grid;gap:4px}
+#tor-design .card-bridge-download span{color:var(--sub);font-size:13px}
+#tor-design .card-bridge-download .action{flex:0 0 auto;text-decoration:none}
+@media(max-width:700px){#tor-design .card-reader-admin-form{grid-template-columns:1fr}}
+@media(max-width:700px){#tor-design .card-bridge-download{align-items:stretch;flex-direction:column}#tor-design .card-bridge-download .action{text-align:center}}
 #tor-design .daily-report-table table,#tor-design .daily-crystal{min-width:1180px;table-layout:fixed}
 #tor-design .daily-report-table th:nth-child(1),#tor-design .daily-report-table td:nth-child(1),#tor-design .daily-crystal th:nth-child(1),#tor-design .daily-crystal td:nth-child(1){width:4.35%;text-align:center}
 #tor-design .daily-report-table th:nth-child(2),#tor-design .daily-report-table td:nth-child(2),#tor-design .daily-crystal th:nth-child(2),#tor-design .daily-crystal td:nth-child(2){width:8.25%}

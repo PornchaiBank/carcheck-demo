@@ -26,7 +26,7 @@ app.Use(async (ctx,next) => {
     ctx.Response.Headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
     if(ctx.Request.Host.Value != "127.0.0.1:17861") {ctx.Response.StatusCode=403;return;}
     string origin=ctx.Request.Headers.Origin.ToString();
-    bool trusted=origin==localOrigin || (allowWeb && origin=="https://pornchaibank.github.io");
+    bool trusted=origin==localOrigin || (allowWeb && (origin=="https://pornchaibank.github.io" || origin=="http://127.0.0.1:5173"));
     if(origin.Length>0 && !trusted) {ctx.Response.StatusCode=403;return;}
     if(trusted) {
         ctx.Response.Headers["Access-Control-Allow-Origin"]=origin;
@@ -80,7 +80,7 @@ Console.WriteLine("Close this window or press Ctrl+C to stop.");
 Console.WriteLine("Open this private local link (do not share it):");
 string url=localOrigin+"/#"+token;
 Console.WriteLine(url);
-if(allowWeb) Console.WriteLine("Optional GitHub origin is enabled. Pairing code is retained for this Windows user. Reset-Pairing.cmd revokes old codes.");
+if(allowWeb) Console.WriteLine("Exact CARCHECK web origins are enabled (GitHub Pages and 127.0.0.1:5173). Pairing code is retained for this Windows user. Reset-Pairing.cmd revokes old codes.");
 try { Process.Start(new ProcessStartInfo(url){UseShellExecute=true}); } catch {Console.WriteLine("Open the local link manually.");}
 await app.WaitForShutdownAsync();
 record ReadRequest(string Reader);

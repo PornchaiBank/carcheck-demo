@@ -1,6 +1,8 @@
 import React,{useState,useEffect,useRef} from 'react';
 import {bangkokDay,duplicate,validCard} from './attendance-state.mjs';
 import {loadConnection,rememberConnection,forgetConnection} from './bridge-preferences.mjs';
+import {saveAttendance} from './database.jsx';
+import {apiUrl} from './runtime-config.js';
 function storage(){try{return window.localStorage;}catch{return null;}}
 const base='http://127.0.0.1:17861';
 async function request(token,path,body,signal){
@@ -35,7 +37,7 @@ export default function Attendance({records,onSave}){
  return()=>{alive=false;clearTimeout(timer);abort.current?.abort();document.removeEventListener('visibilitychange',visibility);};},[connection,reader]);
  const saved=card&&duplicate(records,card.personKey,bangkokDay(new Date().toISOString()));
  const save=async()=>{if(!card||saved||savingLock.current||!connection)return;savingLock.current=true;setSaving(true);const version=generation.current;const expected=card.readId;while(busy.current&&mounted.current&&version===generation.current)await new Promise(r=>setTimeout(r,50));if(!mounted.current||version!==generation.current){savingLock.current=false;if(mounted.current)setSaving(false);return;}busy.current=true;
- try{const row=await request(connection,'/api/attendance/confirm',{reader,readId:expected});if(!mounted.current||version!==generation.current)return;if(row.id!==expected||row.personKey!==card.personKey)throw new Error('ข้อมูลบัตรเปลี่ยน กรุณารออ่านใหม่');onSave(row);setStatus('บันทึกรายการชั่วคราวแล้ว ถอดบัตรเพื่อรับคนถัดไป');}
+ try{const row=await request(connection,'/api/attendance/confirm',{reader,readId:expected});if(!mounted.current||version!==generation.current)return;if(row.id!==expected||row.personKey!==card.personKey)throw new Error('ข้อมูลบัตรเปลี่ยน กรุณารออ่านใหม่');const sessionResponse=await fetch(apiUrl('/api/auth/session'),{credentials:'include',cache:'no-store'});if(!sessionResponse.ok)throw new Error('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');const account=await sessionResponse.json();const savedRow=await saveAttendance(row,account.centerId,account.userId);onSave(savedRow);setStatus('บันทึกการมาทำงานลงฐานข้อมูลแล้ว ถอดบัตรเพื่อรับคนถัดไป');}
  catch(e){if(mounted.current&&version===generation.current){setCard(null);setStatus(e.message);}}
  finally{savingLock.current=false;busy.current=false;if(mounted.current)setSaving(false);}};
  const format=(iso,part)=>new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',...(part==='date'?{day:'2-digit',month:'short',year:'numeric'}:{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}).format(new Date(iso));
