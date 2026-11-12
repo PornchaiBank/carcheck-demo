@@ -29,19 +29,22 @@ public sealed record JobSummary(
     string CenterName,
     string Vin,
     string InsurerId,
-    string VehicleTypeId);
+    string VehicleTypeId,
+    bool Deleted=false,
+    string? DeleteReason=null);
+public sealed record JobDeleteInput(string CenterId,string Reason,string? UserId);
 public sealed record JobInput(string CustomerId,string LicensePlate,string Province,string InsurerId,decimal InspectionFee,decimal Act1,decimal Act2,decimal Act3,decimal Act12,decimal OtherFee,string VehicleTypeId,string CenterId,DateTime? TaxExpiry,DateTime? InsuranceExpiry,string? UserId,string? Note,string? Vin,decimal AnnualTax);
 
 public sealed record LookupItem(string Id, string Name);
 public sealed record AddressOption(string ProvinceCode,string ProvinceName,string AmphurCode,string AmphurName,string DistrictCode,string DistrictName,string Zipcode);
-public sealed record CenterRecord(string Id, string Name, string Address, string Phone);
-public sealed record CenterInput(string Name, string Address, string Phone);
+public sealed record CenterRecord(string Id, string Name, string Address, string Phone, string PromptPayType, string PromptPayNumber,string PaymentQrMode="number",bool HasPaymentQrImage=false);
+public sealed record CenterInput(string Name, string Address, string Phone, string? PromptPayType, string? PromptPayNumber,string? PaymentQrMode=null,string? PaymentQrImage=null);
 public sealed record InsurerRecord(string Id, string Name, string Type);
 public sealed record InsurerInput(string Name, string Type);
 public sealed record VehicleTypeRecord(string Id, string Name);
 public sealed record VehicleTypeInput(string Name);
-public sealed record StaffRecord(string Id, string Name, string Address, string Phone, string CenterId, string CenterName, string UserType, bool Active);
-public sealed record StaffInput(string Name, string? Password, string Address, string Phone, string CenterId, string UserType, bool Active, string? ModifiedBy);
+public sealed record StaffRecord(string Id, string Name, string Address, string Phone, string CenterId, string CenterName, string UserType, bool Active,IReadOnlyList<string>? AllowedCenterIds=null);
+public sealed record StaffInput(string Name, string? Password, string Address, string Phone, string CenterId, string UserType, bool Active, string? ModifiedBy,IReadOnlyList<string>? AllowedCenterIds=null);
 public sealed record ProgramRecord(string Id, string Name);
 public sealed record PermissionRecord(string UserId, string UserName, IReadOnlyList<string> ProgramIds, IReadOnlyList<string> ProgramNames);
 public sealed record PermissionPage(IReadOnlyList<ProgramRecord> Programs, IReadOnlyList<PermissionRecord> Rows);
@@ -55,8 +58,11 @@ public sealed record WebsiteEntryInput(bool Visible, string? DataUrl);
 public sealed record CustomerAnnouncementRecord(int Id, string Name, string Type, string Path, string Url, bool HasImage);
 public sealed record CustomerAnnouncementInput(string Name, string Type, string? Url, string? DataUrl, string? FileName);
 public sealed record CustomerSummary(string Id,string Name,string CitizenId,string Phone,string Address,string Province,string Amphur,string District,string Zipcode,int? AmphurCode,int? DistrictCode);
+public sealed record CustomerInput(string Name,string CitizenId,string Phone,string Address,string Province,string Amphur,string District,string Zipcode,int? AmphurCode,int? DistrictCode);
 public sealed record FaultSummary(string Id, string CustomerId, string CustomerName, string VehicleId, string Description, DateTime? CreatedAt, string CenterId, bool HasImages);
 public sealed record FaultInput(string CustomerId,string CustomerName,string VehicleId,string Description,string CenterId,string? UserId,string? Image1,string? Image2,string? Image3);
+public sealed record VehicleCopySummary(long Id,string LetterCategory,string RegistrationNumber,string Province,string CenterId,string CreatedBy,DateTime CreatedAt,bool HasImage,string? Note);
+public sealed record VehicleCopyInput(string LetterCategory,string RegistrationNumber,string Province,string CenterId,string? UserId,string? Image,string? Note);
 public sealed record MenuItem(string Id, string Name, string Url);
 public sealed record DatabaseHealth(string Status, string Database, bool LegacySchemaFound, string Authentication);
 public sealed record DatabaseSummary(long Centers, long Customers, long Jobs, long Faults, long Staff, long LineLinkedCustomers, long LineSent, long LineFailed);

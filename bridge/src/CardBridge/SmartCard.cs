@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-public record CardData(string CitizenId, string ThaiName, string Reader);
+public record CardData(string CitizenId, string ThaiName, string Address, string Reader);
 public sealed class CardError(string message) : Exception(message);
 public static class SmartCard
 {
@@ -74,8 +74,8 @@ public static class SmartCard
                 return response[..(int)length];
             }
             Apdu.Exchange(Send, [0x00,0xA4,0x04,0x00,0x08,0xA0,0x00,0x00,0x00,0x54,0x48,0x00,0x01], responseP2);
-            byte[] Field(byte offset, byte length) {
-                var result = Apdu.Exchange(Send, [0x80,0xB0,0x00,offset,0x02,0x00,length], responseP2);
+            byte[] Field(ushort offset, byte length) {
+                var result = Apdu.Exchange(Send, [0x80,0xB0,(byte)(offset>>8),(byte)offset,0x02,0x00,length], responseP2);
                 if (result.Length == 0) result = Apdu.Exchange(Send, [0x00,0xC0,0x00,responseP2,length], responseP2);
                 if (result.Length != length) throw new CardError("ข้อมูลบัตรไม่ครบ กรุณาเสียบบัตรใหม่");
                 return result;
@@ -86,7 +86,9 @@ public static class SmartCard
             var name = Encoding.GetEncoding(874).GetString(Field(0x11,100)).Trim('\0',' ');
             name = string.Join(" ", name.Split('#', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()));
             if (string.IsNullOrWhiteSpace(name)) throw new CardError("ไม่พบชื่อบนบัตร");
-            return new(id,name,reader);
+            var address = Encoding.GetEncoding(874).GetString(Field(0x1579,100)).Trim('\0',' ');
+            address = string.Join(" ", address.Split('#', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()));
+            return new(id,name,address,reader);
         } finally {
             if (card != IntPtr.Zero) { if(transaction) SCardEndTransaction(card,0); SCardDisconnect(card,0); }
             SCardReleaseContext(ctx);

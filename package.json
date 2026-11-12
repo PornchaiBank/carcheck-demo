@@ -11,7 +11,7 @@
   "scripts": {
     "build": "esbuild src/app.jsx --bundle --minify --outfile=app.js",
     "dev": "esbuild src/app.jsx --bundle --outfile=app.js --watch --servedir=. --serve=127.0.0.1:5173",
-    "test": "node --test src/attendance-state.test.mjs src/bridge-preferences.test.mjs src/workflow-state.test.mjs"
+    "test": "node --test src/attendance-state.test.mjs src/bridge-preferences.test.mjs src/workflow-state.test.mjs src/promptpay.test.mjs src/center-access.test.mjs src/entry-job-controls.test.mjs src/menu-access.test.mjs src/entry-customer.test.mjs src/date-fields.test.mjs src/receipt-payment.test.mjs src/camera-policy.test.mjs src/vehicle-copy-validation.test.mjs"
   },
   "engines": {
     "node": ">=20"

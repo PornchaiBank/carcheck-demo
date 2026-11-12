@@ -14,10 +14,8 @@ export default function PublicHome({onLoaded}){
  const move=step=>setActive(index=>(index+step+announcements.length)%announcements.length);
  const picture=current&&<img src={apiRoot+current.url} alt={current.name||`ประกาศ ${active+1}`}/>;
  return <div className="legacy-home">
-  <section className={'public-hero '+(data?.hasHeaderImage?'has-image':'')}>
-   {data?.hasHeaderImage&&<img className="public-hero-image" src={apiRoot+'/api/public/header-image'} alt="สถานตรวจสภาพรถ"/>}
-   <div className="public-hero-glow"/><div className="public-hero-copy"><span className="public-kicker">CARCHECK · VEHICLE SERVICE</span><h2>ตรวจรถมั่นใจ<br/>พร้อมทุกการเดินทาง</h2><p>บริการตรวจสภาพรถ พ.ร.บ. และภาษีประจำปี<br/>ด้วยขั้นตอนที่ชัดเจนและข้อมูลที่ตรวจสอบได้</p></div>
-   <div className="public-hero-mark" aria-hidden="true"><span>ตรอ.</span><small>สถานตรวจสภาพรถ</small></div>
+  <section className="public-hero fixed-poster-hero" aria-label="สถานตรวจสภาพรถมาตรฐาน">
+   <img src="./carchecktor-poster.png?v=1" alt="สถานตรวจสภาพรถมาตรฐาน"/>
   </section>
   <div className="legacy-marquee" role="status"><span>{welcome}</span></div>
   <section className="public-services" aria-label="บริการหลัก"><article><b>01</b><div><strong>ตรวจสภาพรถ</strong><span>เตรียมรถให้พร้อมตามข้อกำหนด</span></div></article><article><b>02</b><div><strong>พ.ร.บ.</strong><span>ดูแลความคุ้มครองภาคบังคับ</span></div></article><article><b>03</b><div><strong>ภาษีประจำปี</strong><span>ติดตามวันครบกำหนดได้สะดวก</span></div></article></section>

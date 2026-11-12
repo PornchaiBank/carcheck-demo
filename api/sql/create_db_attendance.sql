@@ -38,8 +38,24 @@ BEGIN TRY
                 UNIQUE (bridge_read_id),
 
             CONSTRAINT UQ_db_attendance_person_day
-                UNIQUE (person_key, work_day)
+                UNIQUE (person_key, work_day, center_id)
         );
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM sys.key_constraints
+        WHERE parent_object_id = OBJECT_ID(N'dbo.db_attendance')
+          AND name = N'UQ_db_attendance_person_day'
+    )
+    BEGIN
+        ALTER TABLE dbo.db_attendance
+            DROP CONSTRAINT UQ_db_attendance_person_day;
+
+        ALTER TABLE dbo.db_attendance
+            ADD CONSTRAINT UQ_db_attendance_person_day
+                UNIQUE (person_key, work_day, center_id);
     END;
 
     IF NOT EXISTS

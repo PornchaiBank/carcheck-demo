@@ -48,7 +48,7 @@ public sealed class AttendanceSession
     public static void SelfTest()
     {
         bool present=true; string stamp="1"; string cid="0000000000000";
-        var session=new AttendanceSession(_=>new(present,stamp),_=>new(cid,"TEST ONLY","reader"));
+        var session=new AttendanceSession(_=>new(present,stamp),_=>new(cid,"TEST ONLY","","reader"));
         void Assert(bool value){if(!value) throw new Exception("Attendance self-test failed");}
         var first=session.Snapshot("reader"); var saved=session.Confirm("reader",first.ReadId!);
         Assert(session.Confirm("reader",first.ReadId!).Id==saved.Id);

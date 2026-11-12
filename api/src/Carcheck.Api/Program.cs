@@ -6,6 +6,8 @@ using Carcheck.Api;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 var origins = builder.Configuration.GetSection("Api:AllowedOrigins").GetChildren().Select(item => item.Value).Where(value => !string.IsNullOrWhiteSpace(value)).Cast<string>().ToArray();
 builder.Services.AddCors(options => options.AddPolicy("Web", policy => policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 builder.Services.AddSingleton<LegacySqlRepository>();
@@ -73,15 +75,13 @@ app.MapGet("/api/health", (IConfiguration config) => Results.Ok(new
 {
     status = "ok",
     databaseConfigured = !string.IsNullOrWhiteSpace(config.GetConnectionString("DefaultConnection")),
-    mode = "read-only"
+    mode = "read-write"
 }));
-
 var api = app.MapGroup("/api");
+api.AddEndpointFilter<CenterAccessFilter>();
 const string sessionCookie="carcheck.session";
-await app.Services.GetRequiredService<LegacySqlRepository>().EnsureAttendanceTableAsync(CancellationToken.None);
-await app.Services.GetRequiredService<LegacySqlRepository>().EnsureLineTablesAsync(CancellationToken.None);
 api.MapGet("/attendance",async(string centerId,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(centerId)?Results.BadRequest(new{error="ต้องระบุศูนย์บริการ"}):Results.Ok(await repository.GetAttendanceAsync(centerId.Trim(),token)));
-api.MapPost("/attendance",async(AttendanceInput input,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(input.PersonKey)||string.IsNullOrWhiteSpace(input.CenterId)||!DateOnly.TryParse(input.Day,out _)?Results.BadRequest(new{error="ข้อมูลลงเวลาไม่ครบถ้วน"}):Results.Ok(await repository.SaveAttendanceAsync(input,token)));
+api.MapPost("/attendance",async(AttendanceInput input,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(input.PersonKey)||string.IsNullOrWhiteSpace(input.CenterId)?Results.BadRequest(new{error="ข้อมูลลงเวลาไม่ครบถ้วน"}):Results.Ok(await repository.SaveAttendanceAsync(input,token)));
 api.MapGet("/line/status",async(string centerId,LineMessagingClient line,LegacySqlRepository repository,CancellationToken token)=>{if(string.IsNullOrWhiteSpace(centerId))return Results.BadRequest(new{error="กรุณาระบุศูนย์บริการ"});var settings=await repository.GetLineSettingsAsync(centerId.Trim(),token);return Results.Ok(new{configured=line.Configured,settings.CenterId,settings.Automatic,settings.LeadDays,settings.SendHour,settings.SendMinute,sendTime=$"{settings.SendHour:00}:{settings.SendMinute:00}"});});
 api.MapPut("/line/settings",async(LineSettingsInput input,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(input.CenterId)?Results.BadRequest(new{error="กรุณาระบุศูนย์บริการ"}):input.LeadDays is <0 or >365?Results.BadRequest(new{error="จำนวนวันล่วงหน้าต้องอยู่ระหว่าง 0 ถึง 365 วัน"}):input.SendHour is <0 or >23||input.SendMinute is <0 or >59?Results.BadRequest(new{error="เวลาส่งอัตโนมัติไม่ถูกต้อง"}):Results.Ok(await repository.UpdateLineSettingsAsync(input,token)));
 api.MapPost("/line/link-code",async(LineLinkCodeInput input,LegacySqlRepository repository,CancellationToken token)=>
@@ -130,10 +130,10 @@ api.MapPost("/auth/login", async (LoginRequest request, HttpContext context, Leg
     var user = await repository.AuthenticateAsync(username, password, token);
     if(user is null)return Results.Json(new { error = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" }, statusCode: StatusCodes.Status401Unauthorized);
     var session=sessions.Create(user);
-    context.Response.Cookies.Append(sessionCookie,session.Token,SessionCookieOptions(context,session.Expires));
+    context.Response.Cookies.Append(sessionCookie,session.Token,SessionCookieOptions(context));
     return Results.Ok(user);
 });
-api.MapGet("/auth/session",(HttpContext context,LoginSessionStore sessions)=>sessions.TryGet(context.Request.Cookies[sessionCookie],out var user)?Results.Ok(user):Results.Unauthorized());
+api.MapGet("/auth/session",async(HttpContext context,LoginSessionStore sessions,LegacySqlRepository repository,CancellationToken token)=>sessions.TryGet(context.Request.Cookies[sessionCookie],out var user)?Results.Ok(user! with {ProgramIds=await repository.GetUserProgramIdsAsync(user!.UserId,token)}):Results.Unauthorized());
 api.MapPost("/auth/logout",(HttpContext context,LoginSessionStore sessions)=>{sessions.Revoke(context.Request.Cookies[sessionCookie]);context.Response.Cookies.Delete(sessionCookie,SessionCookieOptions(context));return Results.NoContent();});
 api.MapPut("/account/password",async(PasswordChangeInput input,LegacySqlRepository repository,CancellationToken token)=>
 {
@@ -152,7 +152,7 @@ api.MapGet("/public/customer-announcements/{id:int}",async(int id,LegacySqlRepos
 {
     var row=(await repository.GetCustomerAnnouncementsAsync(token)).FirstOrDefault(item=>item.Id==id&&item.Type.Contains('I',StringComparison.OrdinalIgnoreCase)&&item.HasImage);
     if(row is null)return Results.NotFound();
-    var file=Path.Combine(configuration["Api:LegacyCustomerImageRoot"]??string.Empty,Path.GetFileName(row.Path));
+    var file=Path.Combine(CustomerImageRoot(configuration),Path.GetFileName(row.Path));
     return File.Exists(file)?Results.File(file,DetectFileContentType(file),enableRangeProcessing:false):Results.NotFound();
 });
 api.MapGet("/public/website-entry/{id}",async(string id,LegacySqlRepository repository,CancellationToken token)=>
@@ -163,29 +163,44 @@ api.MapGet("/public/website-entry/{id}",async(string id,LegacySqlRepository repo
     var asset=await repository.GetWebsiteEntryImageAsync(id,token);return asset is null?Results.NotFound():Results.File(asset.Data,asset.ContentType,enableRangeProcessing:false);
 });
 api.MapGet("/database/health", async (LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.CheckConnectionAsync(token)));
-api.MapGet("/database/summary", async (string? centerId, LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.GetSummaryAsync(centerId?.Trim(),token)));
+api.MapGet("/database/summary", async (string? centerId,HttpContext context, LegacySqlRepository repository, CancellationToken token) => {if(string.IsNullOrWhiteSpace(centerId)&&context.Items["CenterAccess"] is string[] allowed)centerId=allowed.FirstOrDefault();return Results.Ok(await repository.GetSummaryAsync(centerId?.Trim(),token));});
 
-api.MapGet("/jobs", async (string centerId, string? search, LegacySqlRepository repository, CancellationToken token) =>
+api.MapGet("/jobs", async (string centerId, string? search,bool? includeDeleted, LegacySqlRepository repository, CancellationToken token) =>
 {
     if (string.IsNullOrWhiteSpace(centerId))return Results.BadRequest(new { error = "ต้องระบุ centerId" });
-    return Results.Ok(await repository.GetJobsAsync(centerId.Trim(), search, token));
+    return Results.Ok(await repository.GetJobsAsync(centerId.Trim(), search, token,includeDeleted==true));
 });
-api.MapPost("/jobs",async(JobInput input,LegacySqlRepository repository,CancellationToken token)=>ValidateJob(input) is { } error?Results.BadRequest(new{error}):Results.Created("/api/jobs",new{id=await repository.CreateJobAsync(input,token)}));
+api.MapPost("/jobs",async(JobInput input,LegacySqlRepository repository,CancellationToken token)=>
+{
+    if(ValidateJob(input) is { } error)return Results.BadRequest(new{error});
+    if(await repository.HasDuplicatePlateTodayAsync(input.CenterId,input.LicensePlate,token))return Results.Conflict(new{error="ทะเบียนรถนี้มีรายการรับงานในวันนี้แล้ว"});
+    return Results.Created("/api/jobs",new{id=await repository.CreateJobAsync(input,token)});
+});
+api.MapPost("/customers",async(CustomerInput input,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(input.Name)?Results.BadRequest(new{error="กรุณาระบุชื่อ–นามสกุลลูกค้า"}):Results.Created("/api/customers",await repository.CreateCustomerAsync(input,token)));
+api.MapPut("/customers/{id}",async(string id,CustomerInput input,LegacySqlRepository repository,CancellationToken token)=>{
+    if(string.IsNullOrWhiteSpace(id)||id.Trim().Length>50||string.IsNullOrWhiteSpace(input.Name))return Results.BadRequest(new{error="กรุณาระบุรหัสลูกค้าและชื่อ–นามสกุล"});
+    if(input.Name.Length>250||input.CitizenId?.Length>20||input.Phone?.Length>50||input.Address?.Length>500||input.Province?.Length>100||input.Amphur?.Length>100||input.District?.Length>100||input.Zipcode?.Length>10)return Results.BadRequest(new{error="ข้อมูลลูกค้ายาวเกินขนาดที่รองรับ"});
+    return await repository.UpdateCustomerAsync(id.Trim(),input,token)?Results.NoContent():Results.NotFound(new{error="ไม่พบลูกค้าที่ต้องการแก้ไข กรุณาค้นหาลูกค้าใหม่"});
+});
 api.MapPut("/jobs/{id}",async(string id,JobInput input,LegacySqlRepository repository,CancellationToken token)=>ValidateJob(input) is { } error?Results.BadRequest(new{error}):await repository.UpdateJobAsync(id.Trim(),input,token)?Results.NoContent():Results.NotFound(new{error="ไม่พบรายการรับงาน"}));
-api.MapDelete("/jobs/{id}",async(string id,string centerId,LegacySqlRepository repository,CancellationToken token)=>await repository.DeleteJobAsync(id.Trim(),centerId.Trim(),token)?Results.NoContent():Results.NotFound(new{error="ไม่พบรายการรับงาน"}));
-api.MapGet("/master/centers", async (LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.GetCentersAsync(token)));
-api.MapGet("/centers", async (LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.GetCenterRecordsAsync(token)));
+api.MapDelete("/jobs/{id}",async(string id,[Microsoft.AspNetCore.Mvc.FromBody] JobDeleteInput input,HttpContext context,LoginSessionStore sessions,LegacySqlRepository repository,CancellationToken token)=>{if(string.IsNullOrWhiteSpace(input.CenterId)||string.IsNullOrWhiteSpace(input.Reason)||input.Reason.Trim().Length>1000)return Results.BadRequest(new{error="กรุณาระบุศูนย์บริการและสาเหตุการลบไม่เกิน 1,000 ตัวอักษร"});var actor=sessions.TryGet(context.Request.Cookies[sessionCookie],out var user)?user!.UserId:input.UserId??string.Empty;return await repository.DeleteJobAsync(id.Trim(),input.CenterId.Trim(),input.Reason.Trim(),actor,token)?Results.NoContent():Results.NotFound(new{error="ไม่พบรายการรับงาน หรือรายการถูกลบแล้ว"});});
+api.MapGet("/master/centers", async (HttpContext context,LegacySqlRepository repository, CancellationToken token) => {var rows=await repository.GetCentersAsync(token);return Results.Ok(context.Items["CenterAccess"] is string[] allowed?rows.Where(row=>allowed.Contains(row.Id,StringComparer.OrdinalIgnoreCase)):rows);});
+api.MapGet("/centers", async (HttpContext context,LegacySqlRepository repository, CancellationToken token) => {var rows=await repository.GetCenterRecordsAsync(token);return Results.Ok(context.Items["CenterAccess"] is string[] allowed?rows.Where(row=>allowed.Contains(row.Id,StringComparer.OrdinalIgnoreCase)):rows);});
 api.MapPost("/centers", async (CenterInput input, LegacySqlRepository repository, CancellationToken token) =>
 {
     var error = ValidateCenter(input); if (error is not null)return Results.BadRequest(new { error });
-    return Results.Created("/api/centers", await repository.CreateCenterAsync(input, token));
+    var image=DecodeImage(input.PaymentQrImage,input.PaymentQrMode=="image");if(image.Error is not null)return Results.BadRequest(new{error=image.Error});
+    return Results.Created("/api/centers", await repository.CreateCenterAsync(input, token,image.Image));
 });
 api.MapPut("/centers/{id}", async (string id, CenterInput input, LegacySqlRepository repository, CancellationToken token) =>
 {
     if (string.IsNullOrWhiteSpace(id))return Results.BadRequest(new { error = "ไม่พบรหัสศูนย์บริการ" });
     var error = ValidateCenter(input); if (error is not null)return Results.BadRequest(new { error });
-    return await repository.UpdateCenterAsync(id.Trim(), input, token) ? Results.NoContent() : Results.NotFound(new { error = "ไม่พบศูนย์บริการที่ต้องการแก้ไข" });
+    var image=DecodeImage(input.PaymentQrImage,false);if(image.Error is not null)return Results.BadRequest(new{error=image.Error});
+    if(input.PaymentQrMode=="image"&&image.Image is null&&await repository.GetCenterPaymentQrAsync(id.Trim(),token) is null)return Results.BadRequest(new{error="กรุณาแนบรูป QR Code"});
+    return await repository.UpdateCenterAsync(id.Trim(), input, token,image.Image) ? Results.NoContent() : Results.NotFound(new { error = "ไม่พบศูนย์บริการที่ต้องการแก้ไข" });
 });
+api.MapGet("/centers/{id}/payment-qr",async(string id,LegacySqlRepository repository,CancellationToken token)=>await repository.GetCenterPaymentQrAsync(id.Trim(),token) is { } image?Results.File(image.Data,image.ContentType):Results.NotFound());
 api.MapDelete("/centers/{id}", async (string id, LegacySqlRepository repository, CancellationToken token) =>
     await repository.DeleteCenterAsync(id.Trim(), token) ? Results.NoContent() : Results.NotFound(new { error = "ไม่พบศูนย์บริการที่ต้องการลบ" }));
 api.MapGet("/master/insurers", async (LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.GetInsurersAsync(token)));
@@ -220,16 +235,19 @@ api.MapDelete("/vehicle-types/{id}", async (string id, LegacySqlRepository repos
     await repository.DeleteVehicleTypeAsync(id.Trim(), token) ? Results.NoContent() : Results.NotFound(new { error = "ไม่พบประเภท รย. ที่ต้องการลบ" }));
 api.MapGet("/master/provinces", async (LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.GetProvincesAsync(token)));
 api.MapGet("/master/address-options",async(LegacySqlRepository repository,CancellationToken token)=>Results.Ok(await repository.GetAddressOptionsAsync(token)));
-api.MapGet("/staff", async (string? viewerId, LegacySqlRepository repository, CancellationToken token) => Results.Ok(await repository.GetStaffRecordsAsync(viewerId?.Trim()??string.Empty, token)));
+api.MapGet("/staff", async (string? viewerId,HttpContext context,LoginSessionStore sessions, LegacySqlRepository repository, CancellationToken token) => {var actualViewer=sessions.TryGet(context.Request.Cookies[sessionCookie],out var user)?user!.UserId:viewerId?.Trim()??string.Empty;return Results.Ok(await repository.GetStaffRecordsAsync(actualViewer,token));});
+api.MapGet("/staff/center-options",async(HttpContext context,LegacySqlRepository repository,CancellationToken token)=>context.Items["StaffManagement"] is true?Results.Ok(await repository.GetCentersAsync(token)):Results.Json(new{error="บัญชีนี้ไม่มีสิทธิ์จัดการพนักงาน"},statusCode:403));
 api.MapPost("/staff", async (StaffInput input, LegacySqlRepository repository, CancellationToken token) =>
 {
     var error=ValidateStaff(input,true); if(error is not null)return Results.BadRequest(new{error});
+    var centers=await repository.GetCentersAsync(token);if((input.AllowedCenterIds??[]).Append(input.CenterId).Any(id=>!centers.Any(center=>center.Id.Equals(id.Trim(),StringComparison.OrdinalIgnoreCase))))return Results.BadRequest(new{error="มีศูนย์บริการที่ไม่พบในระบบ"});
     return Results.Created("/api/staff",await repository.CreateStaffAsync(input,token));
 });
 api.MapPut("/staff/{id}", async (string id, StaffInput input, LegacySqlRepository repository, CancellationToken token) =>
 {
     if(string.IsNullOrWhiteSpace(id))return Results.BadRequest(new{error="ไม่พบรหัสพนักงาน"});
     var error=ValidateStaff(input,false); if(error is not null)return Results.BadRequest(new{error});
+    var centers=await repository.GetCentersAsync(token);if((input.AllowedCenterIds??[]).Append(input.CenterId).Any(centerId=>!centers.Any(center=>center.Id.Equals(centerId.Trim(),StringComparison.OrdinalIgnoreCase))))return Results.BadRequest(new{error="มีศูนย์บริการที่ไม่พบในระบบ"});
     return await repository.UpdateStaffAsync(id.Trim(),input,token)?Results.NoContent():Results.NotFound(new{error="ไม่พบพนักงานที่ต้องการแก้ไข"});
 });
 api.MapDelete("/staff/{id}", async (string id, LegacySqlRepository repository, CancellationToken token) =>
@@ -287,7 +305,7 @@ api.MapDelete("/website-entries/{id}",async(string id,LegacySqlRepository reposi
 api.MapGet("/customer-announcements",async(LegacySqlRepository repository,CancellationToken token)=>Results.Ok(await repository.GetCustomerAnnouncementsAsync(token)));
 api.MapGet("/customer-announcements/{id:int}/image",async(int id,LegacySqlRepository repository,IConfiguration configuration,CancellationToken token)=>
 {
-    var row=(await repository.GetCustomerAnnouncementsAsync(token)).FirstOrDefault(item=>item.Id==id);if(row is null||!row.HasImage)return Results.NotFound();var file=Path.Combine(configuration["Api:LegacyCustomerImageRoot"]??string.Empty,Path.GetFileName(row.Path));return File.Exists(file)?Results.File(file,DetectFileContentType(file)):Results.NotFound();
+    var row=(await repository.GetCustomerAnnouncementsAsync(token)).FirstOrDefault(item=>item.Id==id);if(row is null||!row.HasImage)return Results.NotFound();var file=Path.Combine(CustomerImageRoot(configuration),Path.GetFileName(row.Path));return File.Exists(file)?Results.File(file,DetectFileContentType(file)):Results.NotFound();
 });
 api.MapPost("/customer-announcements",async(CustomerAnnouncementInput input,LegacySqlRepository repository,IConfiguration configuration,CancellationToken token)=>
 {
@@ -299,7 +317,7 @@ api.MapPut("/customer-announcements/{id:int}",async(int id,CustomerAnnouncementI
 });
 api.MapDelete("/customer-announcements/{id:int}",async(int id,LegacySqlRepository repository,IConfiguration configuration,CancellationToken token)=>
 {
-    var path=await repository.DeleteCustomerAnnouncementAsync(id,token);if(path is null)return Results.NotFound(new{error="ไม่พบประกาศสำหรับลูกค้า"});var file=Path.Combine(configuration["Api:LegacyCustomerImageRoot"]??string.Empty,Path.GetFileName(path));if(File.Exists(file))File.Delete(file);return Results.NoContent();
+    var path=await repository.DeleteCustomerAnnouncementAsync(id,token);if(path is null)return Results.NotFound(new{error="ไม่พบประกาศสำหรับลูกค้า"});var file=Path.Combine(CustomerImageRoot(configuration),Path.GetFileName(path));if(File.Exists(file))File.Delete(file);return Results.NoContent();
 });
 api.MapGet("/reports/insurance", async (string centerId, DateTime dueDate, LegacySqlRepository repository, CancellationToken token) =>
 {
@@ -333,6 +351,16 @@ api.MapPut("/faults/{id}",async(string id,FaultInput input,LegacySqlRepository r
 api.MapDelete("/faults/{id}",async(string id,LegacySqlRepository repository,CancellationToken token)=>await repository.DeleteFaultAsync(id.Trim(),token)?Results.NoContent():Results.NotFound(new{error="ไม่พบรายการข้อผิดพลาด"}));
 api.MapGet("/faults/{id}/images/{slot:int}",async(string id,int slot,LegacySqlRepository repository,CancellationToken token)=>slot is <1 or >3?Results.BadRequest():await repository.GetFaultImageAsync(id.Trim(),slot,token) is { } image?Results.File(image.Data,image.ContentType):Results.NotFound());
 api.MapDelete("/faults/{id}/images/{slot:int}",async(string id,int slot,LegacySqlRepository repository,CancellationToken token)=>slot is <1 or >3?Results.BadRequest():await repository.DeleteFaultImageAsync(id.Trim(),slot,token)?Results.NoContent():Results.NotFound());
+api.MapGet("/vehicle-copies",async(string centerId,string? search,LegacySqlRepository repository,CancellationToken token)=>string.IsNullOrWhiteSpace(centerId)?Results.BadRequest(new{error="กรุณาระบุศูนย์บริการ"}):Results.Ok(await repository.GetVehicleCopiesAsync(centerId.Trim(),search??string.Empty,token)));
+api.MapPost("/vehicle-copies",async(VehicleCopyInput input,LegacySqlRepository repository,CancellationToken token)=>{if(ValidateVehicleCopy(input) is { } error)return Results.BadRequest(new{error});var image=DecodeImage(input.Image,true);if(image.Error is not null)return Results.BadRequest(new{error=image.Error});try{var row=await repository.CreateVehicleCopyAsync(input,image.Image,token);return Results.Created($"/api/vehicle-copies/{row.Id}",row);}catch(VehicleCopyDuplicateException){return Results.Conflict(new{error=VehicleCopyDuplicateException.UserMessage,code="vehicle_copy_duplicate"});}});
+api.MapPut("/vehicle-copies/{id:long}",async(long id,VehicleCopyInput input,LegacySqlRepository repository,CancellationToken token)=>{if(ValidateVehicleCopy(input) is { } error)return Results.BadRequest(new{error});var image=DecodeImage(input.Image,false);if(image.Error is not null)return Results.BadRequest(new{error=image.Error});try{return await repository.UpdateVehicleCopyAsync(id,input,image.Image,token)?Results.NoContent():Results.NotFound(new{error="ไม่พบรายการคู่มือ/สำเนารถ"});}catch(VehicleCopyDuplicateException){return Results.Conflict(new{error=VehicleCopyDuplicateException.UserMessage,code="vehicle_copy_duplicate"});}});
+api.MapDelete("/vehicle-copies/{id:long}",async(long id,LegacySqlRepository repository,CancellationToken token)=>await repository.DeleteVehicleCopyAsync(id,token)?Results.NoContent():Results.NotFound(new{error="ไม่พบรายการคู่มือ/สำเนารถ"}));
+api.MapGet("/vehicle-copies/{id:long}/image",async(long id,LegacySqlRepository repository,CancellationToken token)=>await repository.GetVehicleCopyImageAsync(id,token) is { } image?Results.File(image.Data,image.ContentType):Results.NotFound());
+api.MapGet("/vehicle-copies/duplicate",async(string centerId,string letterCategory,string registrationNumber,string province,long? excludeId,LegacySqlRepository repository,CancellationToken token)=>{
+    var input=new VehicleCopyInput(letterCategory,registrationNumber,province,centerId,null,null,null);
+    if(ValidateVehicleCopy(input) is { } error)return Results.BadRequest(new{error});
+    return Results.Ok(new{duplicate=await repository.HasVehicleCopyAsync(centerId,letterCategory,registrationNumber,province,excludeId,token)});
+});
 api.MapGet("/users/{userId}/menus", async (string userId, LegacySqlRepository repository, CancellationToken token) =>
 {
     if (string.IsNullOrWhiteSpace(userId) || userId.Length > 5)return Results.BadRequest(new { error = "userId ไม่ถูกต้อง" });
@@ -345,6 +373,13 @@ static string? ValidateCenter(CenterInput input)
     if (string.IsNullOrWhiteSpace(input.Address))return "กรุณาระบุที่อยู่";
     if (string.IsNullOrWhiteSpace(input.Phone))return "กรุณาระบุเบอร์โทรศัพท์";
     if (input.Name.Trim().Length > 200 || input.Address.Trim().Length > 200 || input.Phone.Trim().Length > 200)return "ข้อมูลต้องไม่เกิน 200 ตัวอักษร";
+    if(input.PaymentQrMode is not (null or "none" or "number" or "image"))return "กรุณาเลือกรูปแบบ QR รับชำระเงิน";
+    if(input.PaymentQrMode is "image" or "none")return null;
+    var promptType=input.PromptPayType?.Trim()??string.Empty;var promptNumber=new string((input.PromptPayNumber??string.Empty).Where(char.IsDigit).ToArray());
+    if((promptType.Length==0)!=(promptNumber.Length==0))return "กรุณาระบุประเภทและหมายเลขพร้อมเพย์ให้ครบ";
+    if(promptType.Length>0&&promptType is not ("phone" or "national-id" or "tax-id"))return "ประเภทหมายเลขพร้อมเพย์ไม่ถูกต้อง";
+    if(promptType=="phone"&&promptNumber.Length!=10)return "หมายเลขโทรศัพท์พร้อมเพย์ต้องมี 10 หลัก";
+    if(promptType is "national-id" or "tax-id"&&promptNumber.Length!=13)return "เลขบัตรประชาชนหรือเลขนิติบุคคลต้องมี 13 หลัก";
     return null;
 }
 
@@ -372,6 +407,7 @@ static string? ValidateStaff(StaffInput input,bool creating)
     if(input.UserType.Trim() is not ("User" or "Admin"))return "ประเภทพนักงานต้องเป็น User หรือ Admin";
     if(input.Name.Trim().Length>200||input.Address.Trim().Length>200||input.Phone.Trim().Length>200)return "ข้อมูลต้องไม่เกิน 200 ตัวอักษร";
     if(!string.IsNullOrEmpty(input.Password)&&input.Password.Length>200)return "รหัสผ่านต้องไม่เกิน 200 ตัวอักษร";
+    if(input.AllowedCenterIds?.Any(id=>string.IsNullOrWhiteSpace(id)||id.Trim().Length>200)==true)return "รหัสศูนย์บริการไม่ถูกต้อง";
     return null;
 }
 
@@ -399,11 +435,19 @@ static string? ValidateCustomerAnnouncement(CustomerAnnouncementInput input,bool
 }
 static (string? Path,string? Error) SaveCustomerImage(CustomerAnnouncementInput input,IConfiguration configuration)
 {
-    if(string.IsNullOrWhiteSpace(input.DataUrl))return(null,null);var decoded=DecodeImage(input.DataUrl,false);if(decoded.Error is not null)return(null,decoded.Error);var root=configuration["Api:LegacyCustomerImageRoot"]??string.Empty;if(root.Length==0)return(null,"ยังไม่ได้กำหนดโฟลเดอร์รูปภาพระบบเดิม");Directory.CreateDirectory(root);var extension=decoded.Image![0]==0xFF?".jpg":decoded.Image[0]==0x89?".png":".gif";var fileName=$"customer-{Guid.NewGuid():N}{extension}";File.WriteAllBytes(Path.Combine(root,fileName),decoded.Image);return($"~/img/{fileName}",null);
+    if(string.IsNullOrWhiteSpace(input.DataUrl))return(null,null);var decoded=DecodeImage(input.DataUrl,false);if(decoded.Error is not null)return(null,decoded.Error);var root=CustomerImageRoot(configuration);Directory.CreateDirectory(root);var extension=decoded.Image![0]==0xFF?".jpg":decoded.Image[0]==0x89?".png":".gif";var fileName=$"customer-{Guid.NewGuid():N}{extension}";File.WriteAllBytes(Path.Combine(root,fileName),decoded.Image);return($"~/img/{fileName}",null);
+}
+static string CustomerImageRoot(IConfiguration configuration)
+{
+    var configured=configuration["Api:LegacyCustomerImageRoot"];
+    if(string.IsNullOrWhiteSpace(configured))configured="img";
+    if(Path.IsPathRooted(configured)&&Directory.Exists(configured))return configured;
+    return Path.GetFullPath("img",AppContext.BaseDirectory);
 }
 static string SafeCustomerUrl(string? url)=>Uri.TryCreate(url?.Trim(),UriKind.Absolute,out var parsed)&&parsed.Scheme is "http" or "https"?parsed.ToString():string.Empty;
 static string DetectFileContentType(string path)=>Path.GetExtension(path).ToLowerInvariant() switch{".png"=>"image/png",".gif"=>"image/gif",_=>"image/jpeg"};
 static string? ValidateFault(FaultInput input){if(string.IsNullOrWhiteSpace(input.CustomerId)||input.CustomerId.Trim().Length>13)return "กรุณาระบุเลขบัตรประชาชนไม่เกิน 13 หลัก";if(string.IsNullOrWhiteSpace(input.CustomerName)||input.CustomerName.Trim().Length>150)return "กรุณาระบุชื่อลูกค้า";if(string.IsNullOrWhiteSpace(input.VehicleId)||input.VehicleId.Trim().Length>13)return "กรุณาระบุทะเบียนรถ";if(input.Description?.Trim().Length>200)return "หมายเหตุต้องไม่เกิน 200 ตัวอักษร";if(string.IsNullOrWhiteSpace(input.CenterId))return "กรุณาระบุศูนย์บริการ";return null;}
+static string? ValidateVehicleCopy(VehicleCopyInput input){if(string.IsNullOrWhiteSpace(input.LetterCategory)||input.LetterCategory.Trim().Length>20)return "กรุณาระบุหมวดตัวอักษร";if(string.IsNullOrWhiteSpace(input.RegistrationNumber)||input.RegistrationNumber.Trim().Length>30)return "กรุณาระบุหมายเลขทะเบียน";if(string.IsNullOrWhiteSpace(input.Province)||input.Province.Trim().Length>100)return "กรุณาระบุจังหวัด";if(string.IsNullOrWhiteSpace(input.CenterId))return "กรุณาระบุศูนย์บริการ";if(input.Note?.Length>1000)return "หมายเหตุต้องไม่เกิน 1,000 ตัวอักษร";return null;}
 static string? ValidateJob(JobInput input){if(string.IsNullOrWhiteSpace(input.CustomerId))return "กรุณาระบุรหัสลูกค้า";if(string.IsNullOrWhiteSpace(input.LicensePlate))return "กรุณาระบุทะเบียนรถ";if(string.IsNullOrWhiteSpace(input.CenterId))return "กรุณาระบุศูนย์บริการ";if(input.Note?.Length>200)return "หมายเหตุต้องไม่เกิน 200 ตัวอักษร";return null;}
 static (byte[]? Image1,byte[]? Image2,byte[]? Image3,string? Error) DecodeFaultImages(FaultInput input){var a=DecodeImage(input.Image1,false);if(a.Error is not null)return(null,null,null,a.Error);var b=DecodeImage(input.Image2,false);if(b.Error is not null)return(null,null,null,b.Error);var c=DecodeImage(input.Image3,false);return c.Error is null?(a.Image,b.Image,c.Image,null):(null,null,null,c.Error);}
 

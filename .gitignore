@@ -16,3 +16,5 @@ appsettings.*.Local.json
 .vs/
 .dotnet-home/
 .nuget-packages/
+downloads/deploy-*
+downloads/smilehost-*

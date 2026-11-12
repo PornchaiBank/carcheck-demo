@@ -8,6 +8,7 @@ if (!OperatingSystem.IsWindows()) { Console.Error.WriteLine("This reader require
 Console.OutputEncoding = Encoding.UTF8;
 const string localOrigin = "http://127.0.0.1:17861";
 bool allowWeb = args.Contains("--allow-carcheck-web");
+bool openBrowser = !args.Contains("--no-browser");
 using var instance = new Mutex(true,"Local\\CARCHECK.CardBridge.17861",out bool firstInstance);
 if(!firstInstance){Console.Error.WriteLine("Close the existing Card Bridge before starting this version.");return;}
 string token;
@@ -26,7 +27,7 @@ app.Use(async (ctx,next) => {
     ctx.Response.Headers["Content-Security-Policy"]="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
     if(ctx.Request.Host.Value != "127.0.0.1:17861") {ctx.Response.StatusCode=403;return;}
     string origin=ctx.Request.Headers.Origin.ToString();
-    bool trusted=origin==localOrigin || (allowWeb && (origin=="https://pornchaibank.github.io" || origin=="http://127.0.0.1:5173"));
+    bool trusted=origin==localOrigin || (allowWeb && (origin=="https://new.carchecktor.com" || origin=="https://pornchaibank.github.io" || origin=="http://127.0.0.1:5173"));
     if(origin.Length>0 && !trusted) {ctx.Response.StatusCode=403;return;}
     if(trusted) {
         ctx.Response.Headers["Access-Control-Allow-Origin"]=origin;
@@ -44,8 +45,14 @@ app.Use(async (ctx,next) => {
 });
 app.UseDefaultFiles(); app.UseStaticFiles();
 app.MapGet("/api/readers", () => {
-    try { return Results.Ok(new { readers=SmartCard.Readers(), version=3 }); }
+    try { return Results.Ok(new { readers=SmartCard.Readers(), version=3, revision=4 }); }
     catch(CardError e) {return Results.Json(new{error=e.Message},statusCode:503);}
+});
+app.MapPost("/api/presence", (ReadRequest input) => {
+    try {
+        if(string.IsNullOrWhiteSpace(input.Reader) || !SmartCard.Readers().Contains(input.Reader)) return Results.BadRequest(new{error="กรุณาเลือกเครื่องอ่านที่เชื่อมต่ออยู่"});
+        return Results.Ok(SmartCard.Presence(input.Reader));
+    } catch(CardError e) {return Results.Json(new{error=e.Message},statusCode:503);}
 });
 app.MapPost("/api/read", async (ReadRequest input) => {
     if(!await gate.WaitAsync(0)) return Results.Json(new{error="เครื่องอ่านกำลังทำงาน กรุณารอสักครู่"},statusCode:409);
@@ -80,8 +87,10 @@ Console.WriteLine("Close this window or press Ctrl+C to stop.");
 Console.WriteLine("Open this private local link (do not share it):");
 string url=localOrigin+"/#"+token;
 Console.WriteLine(url);
-if(allowWeb) Console.WriteLine("Exact CARCHECK web origins are enabled (GitHub Pages and 127.0.0.1:5173). Pairing code is retained for this Windows user. Reset-Pairing.cmd revokes old codes.");
-try { Process.Start(new ProcessStartInfo(url){UseShellExecute=true}); } catch {Console.WriteLine("Open the local link manually.");}
+if(allowWeb) Console.WriteLine("Exact CARCHECK web origins are enabled (new.carchecktor.com, GitHub Pages and local preview). Pairing code is retained for this Windows user. Reset-Pairing.cmd revokes old codes.");
+if(openBrowser) {
+    try { Process.Start(new ProcessStartInfo(url){UseShellExecute=true}); } catch {Console.WriteLine("Open the local link manually.");}
+}
 await app.WaitForShutdownAsync();
 record ReadRequest(string Reader);
 
